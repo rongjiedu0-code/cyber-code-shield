@@ -1,0 +1,15 @@
+{
+  "models": [
+    {
+      "title": "Existing Team Model",
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "customCommands": [
+    {
+      "name": "test",
+      "prompt": "Run the existing project test command and explain failures."
+    }
+  ]
+}

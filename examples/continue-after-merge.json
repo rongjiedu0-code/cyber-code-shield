@@ -1,0 +1,37 @@
+{
+  "models": [
+    {
+      "title": "Existing Team Model",
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "title": "Cyber-Code-Shield Local Chat",
+      "provider": "ollama",
+      "model": "deepseek-coder-v2:16b",
+      "apiBase": "http://localhost:11434"
+    }
+  ],
+  "customCommands": [
+    {
+      "name": "test",
+      "prompt": "Run the existing project test command and explain failures."
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Cyber-Code-Shield Local Autocomplete",
+    "provider": "ollama",
+    "model": "deepseek-coder-v2:16b",
+    "apiBase": "http://localhost:11434"
+  },
+  "embeddingsProvider": {
+    "provider": "ollama",
+    "model": "nomic-embed-text",
+    "apiBase": "http://localhost:11434"
+  },
+  "codebaseIndex": {
+    "enabled": true,
+    "indexingMode": "local",
+    "embeddingsProvider": "ollama"
+  }
+}

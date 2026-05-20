@@ -1,0 +1,41 @@
+name: Cyber-Code-Shield Local Ollama
+version: 0.1.0
+schema: v1
+
+models:
+  - name: Cyber-Code-Shield Chat
+    provider: ollama
+    model: deepseek-coder-v2:16b
+    apiBase: http://localhost:11434
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
+    defaultCompletionOptions:
+      temperature: 0.2
+      keepAlive: 1800
+
+  - name: Cyber-Code-Shield Autocomplete
+    provider: ollama
+    model: deepseek-coder-v2:16b
+    apiBase: http://localhost:11434
+    roles:
+      - autocomplete
+    autocompleteOptions:
+      debounceDelay: 350
+      maxPromptTokens: 1024
+      onlyMyCode: true
+    defaultCompletionOptions:
+      temperature: 0.3
+      keepAlive: 1800
+
+  - name: Cyber-Code-Shield Embeddings
+    provider: ollama
+    model: nomic-embed-text
+    apiBase: http://localhost:11434
+    roles:
+      - embed
+    embedOptions:
+      maxChunkSize: 512
+      maxBatchSize: 16
