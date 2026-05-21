@@ -256,7 +256,7 @@ CYBER_CODE_SHIELD_CONTEXT.md
 
 ## 本地补丁助手 MVP
 
-Cyber-Code-Shield 可以调用本地 Ollama 模型，根据项目上下文生成可审查的补丁建议。
+Cyber-Code-Shield 可以调用本地模型，根据项目上下文生成可审查的补丁建议。Ollama 是默认 provider；补丁助手命令也支持 LM Studio、llama.cpp server、vLLM 等 OpenAI-compatible 本地服务。
 
 根据错误日志生成修复建议：
 
@@ -321,6 +321,21 @@ python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add 
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add validation" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600
 ```
 
+使用 OpenAI-compatible 本地服务替代 Ollama：
+
+```bash
+# LM Studio 默认本地服务
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add validation" --files src/user.py --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model your-local-model
+
+# llama.cpp server
+python setup_local_ai.py --fix-error --project /path/to/project --error-log ./error.log --inference-provider openai-compatible --api-base http://localhost:8080/v1 --chat-model your-local-model
+
+# vLLM OpenAI-compatible server
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --inference-provider openai-compatible --api-base http://localhost:8000/v1 --chat-model your-local-model
+```
+
+本地验证中，`gemma4-local:latest` 在内置 Python traceback 的 `--fix-error` 场景下生成了较好的修复补丁。这只是示例模型，不是硬性要求。
+
 建议先试内置 demo：
 
 ```bash
@@ -338,7 +353,8 @@ CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 
 安全行为：
 
-- 补丁助手只允许使用 `localhost`、`127.0.0.1` 等本机 Ollama API。
+- 补丁助手只允许使用 `localhost`、`127.0.0.1` 等本机 API。
+- Ollama 仍是默认 provider；OpenAI-compatible 模式面向本地 LM Studio、llama.cpp server 和 vLLM 端点，不面向云端 API。
 - 它只读取受限的项目摘要和代码片段。
 - 它只写入 Markdown 建议文件。
 - 它不会自动修改业务源码，也不会自动应用 patch。
@@ -348,6 +364,7 @@ CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 
 - `Confidence` 应该是 `High`、`Medium` 或 `Low`。如果是 `Low`，建议先补上下文，不要直接应用 diff。
 - `Missing context` 会列出本地模型还需要的文件、日志、测试、schema 或业务规则。可以优先用 `--files` 补充这些文件。
+- 如果出现 `Response warnings`，它们是非阻断提示，用来标记缺少章节、无效 no-op diff、引用未提供上下文的文件，或 `--fix-error` 没有触及主故障行等可疑输出。
 - `Risks or assumptions` 是人工审查重点，复制任何建议代码前都应该先看这里。
 - 本地模型仍可能犯错，生成文件只是可审查建议，不是自主 agent 的最终修改结果。
 

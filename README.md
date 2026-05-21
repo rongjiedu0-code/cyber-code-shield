@@ -266,7 +266,7 @@ Safety notes:
 
 ## Local patch assistant MVP
 
-Cyber-Code-Shield can ask a local Ollama model to generate reviewable patch suggestions from project context.
+Cyber-Code-Shield can ask a local model to generate reviewable patch suggestions from project context. Ollama is the default provider; OpenAI-compatible local servers such as LM Studio, llama.cpp server, and vLLM are also supported for patch assistant commands.
 
 Generate a fix suggestion from an error log:
 
@@ -331,6 +331,21 @@ Use a smaller prompt for local large-model validation:
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add validation" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600
 ```
 
+Use an OpenAI-compatible local server instead of Ollama:
+
+```bash
+# LM Studio default local server
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add validation" --files src/user.py --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model your-local-model
+
+# llama.cpp server
+python setup_local_ai.py --fix-error --project /path/to/project --error-log ./error.log --inference-provider openai-compatible --api-base http://localhost:8080/v1 --chat-model your-local-model
+
+# vLLM OpenAI-compatible server
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --inference-provider openai-compatible --api-base http://localhost:8000/v1 --chat-model your-local-model
+```
+
+In local verification, `gemma4-local:latest` produced a good `--fix-error` patch for the bundled Python traceback demo. This is an example model, not a hard requirement.
+
 Try the bundled demos first:
 
 ```bash
@@ -343,11 +358,13 @@ By default, generated suggestions are written inside the target project:
 ```text
 CYBER_CODE_SHIELD_PATCH_FIX_ERROR_YYYYMMDD-HHMMSS.md
 CYBER_CODE_SHIELD_PATCH_SUGGEST_PATCH_YYYYMMDD-HHMMSS.md
+CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 ```
 
 Safety behavior:
 
-- Patch assistant commands only allow local Ollama API bases such as `localhost` or `127.0.0.1`.
+- Patch assistant commands only allow local API bases such as `localhost` or `127.0.0.1`.
+- Ollama remains the default; OpenAI-compatible mode is intended for local LM Studio, llama.cpp server, and vLLM endpoints, not cloud APIs.
 - They read a limited project summary and capped file snippets.
 - They write only a generated Markdown suggestion file.
 - They do not modify business source files or apply patches automatically.
@@ -360,6 +377,7 @@ Quality guardrails in generated suggestions:
 
 - `Confidence` should be `High`, `Medium`, or `Low`. Treat `Low` as a signal to provide more context before applying any diff.
 - `Missing context` lists files, logs, tests, schemas, or business rules the local model still needs. Add those with `--files` when possible.
+- `Response warnings`, when present, are non-blocking checks for suspicious output such as missing sections, no-op diffs, paths outside the provided context, or a `--fix-error` patch that does not touch the primary error line.
 - `Risks or assumptions` is the review checklist. Read it before copying any suggested code.
 - Local models may still make mistakes. The generated file is a reviewable suggestion, not an autonomous agent result.
 

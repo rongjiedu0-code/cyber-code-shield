@@ -77,6 +77,7 @@ Use this checklist before publishing the first public release. The v0.1 sections
 - [ ] `python setup_local_ai.py --fix-error --project . --error-text "NameError: name 'x' is not defined" --dry-run` builds a prompt without writing files.
 - [ ] `python setup_local_ai.py --suggest-patch --project . --task "Add validation" --dry-run` builds a prompt without writing files.
 - [ ] Patch commands refuse non-local `--api-base` values.
+- [ ] `--inference-provider openai-compatible` appears in help and targets local LM Studio/llama.cpp/vLLM style endpoints.
 - [ ] Patch commands require `--project`.
 - [ ] `--fix-error` requires exactly one of `--error-log` or `--error-text`.
 - [ ] `--fix-error` extracts Python traceback file/line locations in dry-run output.
@@ -89,7 +90,7 @@ Use this checklist before publishing the first public release. The v0.1 sections
 - [ ] `--files` cannot escape the project root.
 - [ ] `--patch-timeout` appears in help and can be used by patch commands.
 - [ ] `--context-lite` appears in help and reduces prompt size for patch commands.
-- [ ] Patch suggestion files record original request, context mode, timeout, generated token cap, and disabled thinking output.
+- [ ] Patch suggestion files record original request, inference provider, context mode, timeout, generated token cap, and disabled thinking output.
 - [ ] Generated patch suggestions are ignored by git.
 - [ ] Patch commands do not modify business source files.
 
@@ -116,6 +117,8 @@ python setup_local_ai.py --suggest-patch --project . --task "Improve the offline
 python setup_local_ai.py --suggest-patch --project . --task "Test non-local API refusal" --api-base http://example.com:11434 --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test timeout option" --files README.md --chat-model gemma4-local --patch-timeout 600 --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test lite context" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600 --dry-run
+python setup_local_ai.py --suggest-patch --project . --task "Test OpenAI-compatible local provider" --files README.md --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model local-model --dry-run
+python -m unittest discover -s tests
 ```
 
 For `--complete-todo`, create a temporary sample first:
@@ -147,6 +150,7 @@ rm -f tmp_complete_todo_sample.py
 - `--complete-todo` requires explicit `--files` in the MVP.
 - Context selection is heuristic and intentionally capped.
 - Output quality depends on the selected local model and available context.
+- OpenAI-compatible support is local-endpoint only; provider auto-detection and streaming responses are not included.
 - Continue.dev currently recommends `config.yaml`; legacy `config.json` support is retained for older setups.
 - Project analysis is heuristic and lightweight; it is not a full AST/code intelligence engine.
 - Offline report is a configuration review aid, not a security audit.

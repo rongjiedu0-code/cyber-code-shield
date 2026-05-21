@@ -30,4 +30,4 @@ python setup_local_ai.py --fix-error --project examples/demo-buggy-project --err
 
 The expected suggestion should identify the wrong variable name and propose using `raw_username.strip().lower()` inside `normalize_username`.
 
-Cyber-Code-Shield only writes a Markdown suggestion file. It does not modify `app.py` automatically.
+Cyber-Code-Shield only writes a Markdown suggestion file. It does not modify `app.py` automatically. Generated suggestion files are local review artifacts and should not be committed unless they are intentionally used as examples.

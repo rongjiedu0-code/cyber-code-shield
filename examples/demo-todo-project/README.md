@@ -20,4 +20,4 @@ python setup_local_ai.py --complete-todo --project examples/demo-todo-project --
 
 A good suggestion should implement `is_valid_username` for 3-20 character usernames containing only letters, digits, or underscores.
 
-Cyber-Code-Shield only writes a Markdown suggestion file. It does not modify `app.py` automatically.
+Cyber-Code-Shield only writes a Markdown suggestion file. It does not modify `app.py` automatically. Generated suggestion files are local review artifacts and should not be committed unless they are intentionally used as examples.

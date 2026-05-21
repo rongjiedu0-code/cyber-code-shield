@@ -23,12 +23,16 @@ v0.2 introduces the first Local Patch Assistant MVP on top of the local AI setup
 - Added demo projects for first-run `--fix-error` and `--complete-todo` workflows.
 - Added guidance for writing high-quality local-model tasks.
 - Added lightweight quality guardrails with `Confidence` and `Missing context` sections in patch suggestions.
+- Added non-blocking `Response warnings` for suspicious local-model output such as missing sections, no-op diffs, paths outside selected context, and `--fix-error` patches that miss the primary error line.
 - Enhanced `--fix-error` to extract file/line locations and focused snippets from common error logs.
+- Enhanced `--fix-error` prompt context with a primary error location for Python traceback repair.
+- Added OpenAI-compatible local inference support for patch assistant commands, enabling LM Studio, llama.cpp server, and vLLM via `--inference-provider openai-compatible`.
+- Added minimal standard-library unit tests for response validation and OpenAI-compatible helper behavior.
 
 ### Safety
 
 - Patch assistant commands do not modify business source files.
-- Patch assistant commands refuse non-local Ollama API bases.
+- Patch assistant commands refuse non-local inference API bases.
 - Patch context is capped to a small number of project files.
 - Generated suggestions are intended for manual review and application.
 
@@ -39,6 +43,7 @@ v0.2 introduces the first Local Patch Assistant MVP on top of the local AI setup
 - `--complete-todo` requires explicit `--files` in the MVP.
 - Context selection is heuristic and intentionally capped.
 - Output quality depends on the selected local model and available context.
+- OpenAI-compatible support is intended for local endpoints only; provider auto-detection and streaming responses are not included.
 
 ## [0.1.0] - Unreleased
 
