@@ -373,12 +373,24 @@ CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 
 生成建议里的质量护栏：
 
+- `Compliance evidence` 会记录工具版本、provider、模型、模型档位、上下文模式、warning 数量，以及源码不会被自动修改这一事实。
 - `Confidence` 应该是 `High`、`Medium` 或 `Low`。如果是 `Low`，建议先补上下文，不要直接应用 diff。
 - `Missing context` 会列出本地模型还需要的文件、日志、测试、schema 或业务规则。可以优先用 `--files` 补充这些文件。
 - 如果出现 `Response warnings`，它们是非阻断提示，用来标记缺少章节、无效 no-op diff、引用未提供上下文的文件，或 `--fix-error` 没有触及主故障行等可疑输出。
+- `Policy warnings` 是非阻断的企业审查信号，用来提示依赖变更、网络调用、shell 执行、secret/env 文件、CI/CD 改动，或 auth/crypto/billing/user-data 等敏感区域。
 - `Risks or assumptions` 是人工审查重点，复制任何建议代码前都应该先看这里。
 - 本地模型仍可能犯错，生成文件只是可审查建议，不是自主 agent 的最终修改结果。
 - 按任务风险匹配模型规模：轻量模型适合快速试用，26B/31B 级模型更适合深度合规和补丁生成工作。
+
+补丁报告选项：
+
+```bash
+# 在生成报告中记录部署档位元数据；不会自动切换模型。
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --model-tier deep --chat-model gemma4-local:latest
+
+# 特殊流程中禁用 policy warning 扫描。
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --no-policy-warnings
+```
 
 ## 高质量任务写法指南
 

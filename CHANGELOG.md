@@ -2,6 +2,23 @@
 
 All notable changes to Cyber-Code-Shield will be documented in this file.
 
+## [0.3.0] - Unreleased
+
+v0.3 strengthens the Local Patch Assistant with compliance-ready Markdown evidence and non-blocking policy warnings for enterprise review.
+
+### Added
+
+- Added `Compliance evidence` metadata to generated patch suggestion reports.
+- Added non-blocking `Policy warnings` for dependency changes, network calls, shell execution, secret/env files, CI/CD changes, and sensitive auth/crypto/billing/user-data areas.
+- Added `--model-tier {light,deep,custom}` to record deployment tier metadata in patch reports without changing model selection.
+- Added `--no-policy-warnings` for workflows that need to suppress policy warning scanning.
+- Added unit tests for policy warning detection and compliance report rendering.
+
+### Safety
+
+- Policy warnings are advisory review signals only; patches are still never applied automatically.
+- v0.3 remains Markdown-report-only; JSON report output and blocking policy gates are deferred.
+
 ## [0.2.0] - Unreleased
 
 v0.2 introduces the first Local Patch Assistant MVP on top of the local AI setup kit. It can generate reviewable Markdown suggestions for user-described changes, error fixes, and TODO completion using local Ollama models.

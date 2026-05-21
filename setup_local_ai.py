@@ -41,10 +41,12 @@ except AttributeError:
     pass
 
 
-__version__ = "0.2.0"
+__version__ = "0.3.0-dev"
 DEFAULT_API_BASE = "http://localhost:11434"
 DEFAULT_INFERENCE_PROVIDER = "ollama"
 INFERENCE_PROVIDERS = ("ollama", "openai-compatible")
+MODEL_TIERS = ("light", "deep", "custom")
+DEFAULT_MODEL_TIER = "custom"
 DEFAULT_PROFILE = "balanced"
 LOCAL_CHAT_TITLE = "Cyber-Code-Shield Local Chat"
 LOCAL_AUTOCOMPLETE_TITLE = "Cyber-Code-Shield Local Autocomplete"
@@ -386,6 +388,7 @@ def resolve_model_config(args):
     profile["api_base"] = args.api_base
     profile["inference_provider"] = args.inference_provider
     profile["api_key"] = args.api_key or os.environ.get("OPENAI_API_KEY")
+    profile["model_tier"] = args.model_tier
 
     # 命令行显式指定的模型优先级最高，方便后续快速替换模型做测试。
     if args.chat_model:
@@ -1873,6 +1876,119 @@ def extract_effective_diff_changes(response):
     return removed, added
 
 
+def make_policy_warning(code, severity, message, evidence=None):
+    """创建非阻断 policy warning。"""
+    warning = {"code": code, "severity": severity, "message": message}
+    if evidence:
+        warning["evidence"] = evidence
+    return warning
+
+
+def get_added_diff_lines(response):
+    """提取 diff 新增行，忽略文件头。"""
+    added_lines = []
+    for line in response.splitlines():
+        if line.startswith("+++"):
+            continue
+        if line.startswith("+"):
+            added_lines.append(line[1:])
+    return added_lines
+
+
+def path_contains_any(path_text, keywords):
+    """判断路径是否包含任一关键词。"""
+    lowered = path_text.lower().replace("\\", "/")
+    return any(keyword in lowered for keyword in keywords)
+
+
+def detect_policy_warnings(response_text, selected_files, project_path, error_locations=None):
+    """检测企业审查相关的非阻断 policy warning。"""
+    warnings = []
+    diff_paths = extract_diff_paths(response_text)
+    normalized_paths = [path.replace("\\", "/") for path in diff_paths]
+    added_text = "\n".join(get_added_diff_lines(response_text)).lower()
+
+    dependency_names = {
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "requirements.txt",
+        "pyproject.toml",
+        "poetry.lock",
+        "pipfile",
+        "pipfile.lock",
+        "go.mod",
+        "go.sum",
+        "cargo.toml",
+        "cargo.lock",
+    }
+    if any(Path(path).name.lower() in dependency_names for path in normalized_paths):
+        warnings.append(make_policy_warning(
+            "DEPENDENCY_CHANGE",
+            "review",
+            "Patch touches dependency or lock files; review supply-chain and approval impact.",
+            ", ".join(normalized_paths),
+        ))
+
+    network_patterns = ("requests.", "fetch(", "urllib", "http.client", "socket", "curl ", "wget ")
+    if any(pattern in added_text for pattern in network_patterns):
+        warnings.append(make_policy_warning(
+            "NETWORK_CALL",
+            "review",
+            "Patch appears to add network access; review data-flow and egress policy.",
+        ))
+
+    shell_patterns = ("subprocess", "os.system", "exec(", "eval(", "child_process", "spawn(")
+    if any(pattern in added_text for pattern in shell_patterns):
+        warnings.append(make_policy_warning(
+            "SHELL_EXECUTION",
+            "review",
+            "Patch appears to add shell or dynamic code execution; review command-injection risk.",
+        ))
+
+    if any(path_contains_any(path, (".env", "secret", "credential", "token", "key", "cert")) for path in normalized_paths):
+        warnings.append(make_policy_warning(
+            "SECRET_OR_ENV_FILE",
+            "review",
+            "Patch touches secret, credential, key, token, cert, or environment files; review sensitive-data handling.",
+            ", ".join(normalized_paths),
+        ))
+
+    ci_keywords = (".github/workflows", ".gitlab-ci.yml", "azure-pipelines.yml", "jenkinsfile", "dockerfile")
+    if any(path_contains_any(path, ci_keywords) for path in normalized_paths):
+        warnings.append(make_policy_warning(
+            "CI_CD_CHANGE",
+            "review",
+            "Patch touches CI/CD or container build configuration; review deployment and pipeline impact.",
+            ", ".join(normalized_paths),
+        ))
+
+    sensitive_keywords = ("auth", "permission", "policy", "crypto", "billing", "payment", "user_data", "userdata")
+    if any(path_contains_any(path, sensitive_keywords) for path in normalized_paths):
+        warnings.append(make_policy_warning(
+            "SENSITIVE_AREA",
+            "review",
+            "Patch touches an authentication, authorization, cryptography, billing, payment, policy, or user-data area.",
+            ", ".join(normalized_paths),
+        ))
+
+    return warnings
+
+
+def format_policy_warnings(policy_warnings):
+    """渲染 policy warnings。"""
+    if not policy_warnings:
+        return ["- None detected"]
+    lines = []
+    for warning in policy_warnings:
+        line = f"- [{warning['severity']}] {warning['code']}: {warning['message']}"
+        if warning.get("evidence"):
+            line += f" Evidence: `{warning['evidence']}`"
+        lines.append(line)
+    return lines
+
+
 def validate_patch_response(response, selected_files, project_path, error_locations=None):
     """对本地模型输出做非阻断校验，提示用户人工复核风险。"""
     warnings = []
@@ -1929,7 +2045,7 @@ def validate_patch_response(response, selected_files, project_path, error_locati
     return warnings
 
 
-def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None):
+def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True):
     """把模型输出包装成补丁建议 Markdown。"""
     task_titles = {
         "fix_error": "Fix Error",
@@ -1937,6 +2053,9 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
         "complete_todo": "Complete TODO",
     }
     task_title = task_titles.get(task_type, "Suggest Patch")
+    validation_warnings = validation_warnings or []
+    policy_warnings = policy_warnings or []
+    generated_at = datetime.now().isoformat(timespec='seconds')
     lines = [
         "# Cyber-Code-Shield Patch Suggestion",
         "",
@@ -1947,14 +2066,35 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
         "",
         f"- Task type: {task_title}",
         f"- Project path: `{project_path}`",
-        f"- Generated at: `{datetime.now().isoformat(timespec='seconds')}`",
+        f"- Generated at: `{generated_at}`",
         f"- Model: `{model_config['chat_model']}`",
+        f"- Model tier: `{model_config.get('model_tier', DEFAULT_MODEL_TIER)}`",
         f"- Inference provider: `{model_config.get('inference_provider', DEFAULT_INFERENCE_PROVIDER)}`",
         f"- API base: `{model_config['api_base']}`",
         f"- Context lite: `{'yes' if context_lite else 'no'}`",
         f"- Timeout seconds: `{patch_timeout}`",
         f"- Max generated tokens: `{num_predict}`",
         "- Thinking output requested: `no`",
+        "",
+        "## Compliance evidence",
+        "",
+        f"- Tool version: `{__version__}`",
+        f"- Task type: `{task_title}`",
+        f"- Generated at: `{generated_at}`",
+        f"- Inference provider: `{model_config.get('inference_provider', DEFAULT_INFERENCE_PROVIDER)}`",
+        f"- Model: `{model_config['chat_model']}`",
+        f"- Model tier: `{model_config.get('model_tier', DEFAULT_MODEL_TIER)}`",
+        f"- API base: `{model_config['api_base']}`",
+        f"- Context mode: `{'lite' if context_lite else 'full'}`",
+        f"- Timeout seconds: `{patch_timeout}`",
+        f"- Max generated tokens: `{num_predict}`",
+        "- Thinking output requested: `no`",
+        "- Source files modified automatically: `no`",
+        f"- Files reviewed count: `{len(selected_files)}`",
+        f"- Detected error locations count: `{len(error_locations or [])}`",
+        f"- Response warning count: `{len(validation_warnings)}`",
+        f"- Policy warning count: `{len(policy_warnings)}`",
+        f"- Policy scan status: `{'enabled' if policy_warnings_enabled else 'disabled'}`",
         "",
         "## User request",
         "",
@@ -1983,13 +2123,14 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
 
     lines.extend([
         "",
-        "## Safety notes",
-        "",
-        "- This is a patch suggestion, not an applied change.",
-        "- Review the diff and validation suggestions before editing source files.",
-        "- The output depends on the selected local model and provided context.",
+        "## Policy warnings",
         "",
     ])
+    if policy_warnings_enabled:
+        lines.extend(format_policy_warnings(policy_warnings))
+    else:
+        lines.append("- Policy warning scan disabled by user.")
+    lines.append("")
 
     if validation_warnings:
         lines.extend([
@@ -1999,6 +2140,15 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
         for warning in validation_warnings:
             lines.append(f"- {warning}")
         lines.append("")
+
+    lines.extend([
+        "## Safety notes",
+        "",
+        "- This is a patch suggestion, not an applied change.",
+        "- Review the diff and validation suggestions before editing source files.",
+        "- The output depends on the selected local model and provided context.",
+        "",
+    ])
 
     lines.extend([
         "## Model response",
@@ -2034,7 +2184,7 @@ def preview_patch_prompt(project_path, output_path, selected_files, prompt, erro
     print(prompt)
 
 
-def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, error_locations=None):
+def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, error_locations=None, policy_warnings_enabled=True):
     """运行本地补丁助手通用流程。"""
     if not project_arg:
         print("补丁助手命令需要指定 --project。")
@@ -2078,6 +2228,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         return 1
 
     validation_warnings = validate_patch_response(model_response, selected_files, project_path, error_locations=error_locations)
+    policy_warnings = detect_policy_warnings(model_response, selected_files, project_path, error_locations=error_locations) if policy_warnings_enabled else []
     rendered_suggestion = render_patch_suggestion(
         task_type,
         project_path,
@@ -2090,6 +2241,8 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         num_predict,
         error_locations=error_locations,
         validation_warnings=validation_warnings,
+        policy_warnings=policy_warnings,
+        policy_warnings_enabled=policy_warnings_enabled,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_suggestion, encoding="utf-8")
@@ -2098,7 +2251,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
     return 0
 
 
-def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite):
+def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
     """根据错误日志生成本地修复建议。"""
     if bool(error_log_arg) == bool(error_text_arg):
         print("--fix-error 需要且只能指定 --error-log 或 --error-text 其中一个。")
@@ -2174,10 +2327,11 @@ def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, file
         patch_timeout,
         context_lite,
         error_locations=error_locations,
+        policy_warnings_enabled=policy_warnings_enabled,
     )
 
 
-def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite):
+def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
     """根据用户任务描述生成本地补丁建议。"""
     if not task_arg:
         print("--suggest-patch 需要指定 --task。")
@@ -2193,10 +2347,11 @@ def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_outp
         dry_run,
         patch_timeout,
         context_lite,
+        policy_warnings_enabled=policy_warnings_enabled,
     )
 
 
-def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite):
+def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
     """根据选中文件中的 TODO/未实现标记生成补全建议。"""
     if not project_arg:
         print("--complete-todo 需要指定 --project。")
@@ -2240,6 +2395,7 @@ def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_outp
         dry_run,
         patch_timeout,
         context_lite,
+        policy_warnings_enabled=policy_warnings_enabled,
     )
 
 
@@ -2546,6 +2702,13 @@ def build_parser():
         help="补丁助手调用本地推理服务的超时时间，默认 180 秒；本地模型冷启动或机器较慢时可调大",
     )
     parser.add_argument("--context-lite", action="store_true", help="使用更短项目上下文，速度更快但可用上下文更少")
+    parser.add_argument("--no-policy-warnings", action="store_true", help="禁用补丁建议中的非阻断 policy warning 扫描")
+    parser.add_argument(
+        "--model-tier",
+        choices=MODEL_TIERS,
+        default=DEFAULT_MODEL_TIER,
+        help="记录本次补丁建议使用的模型部署档位，仅写入报告元数据，不自动切换模型",
+    )
     parser.add_argument("--report-output", help="指定离线报告输出路径，默认当前目录 CYBER_CODE_SHIELD_REPORT.md 或 .json")
     parser.add_argument(
         "--report-format",
@@ -2597,6 +2760,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            policy_warnings_enabled=not args.no_policy_warnings,
         )
 
     if args.suggest_patch:
@@ -2609,6 +2773,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            policy_warnings_enabled=not args.no_policy_warnings,
         )
 
     if args.complete_todo:
@@ -2621,6 +2786,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            policy_warnings_enabled=not args.no_policy_warnings,
         )
 
     if args.project:

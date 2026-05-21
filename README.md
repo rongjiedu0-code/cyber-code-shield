@@ -386,12 +386,24 @@ Safety behavior:
 
 Quality guardrails in generated suggestions:
 
+- `Compliance evidence` records tool version, provider, model, model tier, context mode, warning counts, and the fact that source files were not modified automatically.
 - `Confidence` should be `High`, `Medium`, or `Low`. Treat `Low` as a signal to provide more context before applying any diff.
 - `Missing context` lists files, logs, tests, schemas, or business rules the local model still needs. Add those with `--files` when possible.
-- `Response warnings`, when present, are non-blocking checks for suspicious output such as missing sections, no-op diffs, paths outside the provided context, or a `--fix-error` patch that does not touch the primary error line.
+- `Response warnings`, when present, are non-blocking checks for suspicious model output such as missing sections, no-op diffs, paths outside the provided context, or a `--fix-error` patch that does not touch the primary error line.
+- `Policy warnings` are non-blocking enterprise review signals for dependency changes, network calls, shell execution, secret/env files, CI/CD changes, or sensitive auth/crypto/billing/user-data areas.
 - `Risks or assumptions` is the review checklist. Read it before copying any suggested code.
 - Local models may still make mistakes. The generated file is a reviewable suggestion, not an autonomous agent result.
 - Match model size to task risk: lightweight models are good for quick trials, while 26B/31B-class models are better suited to deeper compliance and patch-generation work.
+
+Patch report options:
+
+```bash
+# Record deployment tier metadata in the generated report; this does not switch models automatically.
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --model-tier deep --chat-model gemma4-local:latest
+
+# Disable policy warning scanning for a special workflow.
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --no-policy-warnings
+```
 
 ## Writing good local-model tasks
 

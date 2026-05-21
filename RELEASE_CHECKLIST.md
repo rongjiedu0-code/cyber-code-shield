@@ -94,7 +94,21 @@ Use this checklist before publishing the first public release. The v0.1 sections
 - [ ] Generated patch suggestions are ignored by git.
 - [ ] Patch commands do not modify business source files.
 
-## 9. Validation commands
+## 9. v0.3.0 Compliance-ready patch reports
+
+- [ ] Generated patch reports include `## Compliance evidence`.
+- [ ] Generated patch reports include `## Policy warnings`.
+- [ ] `--model-tier {light,deep,custom}` appears in help and records metadata only.
+- [ ] `--no-policy-warnings` appears in help and records disabled policy scan status.
+- [ ] Policy warnings detect dependency-file changes.
+- [ ] Policy warnings detect network-call additions.
+- [ ] Policy warnings detect shell-execution additions.
+- [ ] Policy warnings detect secret/env file changes.
+- [ ] Policy warnings detect CI/CD changes.
+- [ ] Policy warnings detect sensitive auth/crypto/billing/user-data paths.
+- [ ] Policy warnings are advisory and do not block report generation.
+
+## 10. Validation commands
 
 Run before release:
 
@@ -118,6 +132,8 @@ python setup_local_ai.py --suggest-patch --project . --task "Test non-local API 
 python setup_local_ai.py --suggest-patch --project . --task "Test timeout option" --files README.md --chat-model gemma4-local --patch-timeout 600 --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test lite context" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600 --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test OpenAI-compatible local provider" --files README.md --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model local-model --dry-run
+python setup_local_ai.py --suggest-patch --project . --task "Test model tier metadata" --files README.md --model-tier deep --dry-run
+python setup_local_ai.py --suggest-patch --project . --task "Test disabled policy warnings" --files README.md --no-policy-warnings --dry-run
 python -m unittest discover -s tests
 ```
 

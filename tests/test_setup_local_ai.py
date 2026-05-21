@@ -38,6 +38,138 @@ class OpenAICompatibleHelpersTest(unittest.TestCase):
         self.assertIn("model not found", str(context.exception))
 
 
+class PolicyWarningsTest(unittest.TestCase):
+    def make_project_file(self, relative_path="app.py", text="def f():\n    return 1\n"):
+        temp_dir = tempfile.TemporaryDirectory()
+        project_path = Path(temp_dir.name)
+        file_path = project_path / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(text, encoding="utf-8")
+        self.addCleanup(temp_dir.cleanup)
+        return project_path, file_path
+
+    def warning_codes(self, warnings):
+        return {warning["code"] for warning in warnings}
+
+    def test_clean_patch_has_no_policy_warnings(self):
+        project_path, file_path = self.make_project_file()
+        response = """```diff
+--- app.py
++++ app.py
+@@ -1,2 +1,2 @@
+ def f():
+-    return 1
++    return 2
+```"""
+        self.assertEqual(ccs.detect_policy_warnings(response, [file_path], project_path), [])
+
+    def test_dependency_change_warning(self):
+        project_path, file_path = self.make_project_file("requirements.txt", "")
+        response = """```diff
+--- requirements.txt
++++ requirements.txt
+@@ -0,0 +1 @@
++requests==2.32.0
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("DEPENDENCY_CHANGE", self.warning_codes(warnings))
+
+    def test_network_call_warning(self):
+        project_path, file_path = self.make_project_file()
+        response = """```diff
+--- app.py
++++ app.py
+@@ -1 +1,2 @@
++response = requests.get(url)
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("NETWORK_CALL", self.warning_codes(warnings))
+
+    def test_shell_execution_warning(self):
+        project_path, file_path = self.make_project_file()
+        response = """```diff
+--- app.py
++++ app.py
+@@ -1 +1,2 @@
++subprocess.run(command)
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("SHELL_EXECUTION", self.warning_codes(warnings))
+
+    def test_secret_file_warning(self):
+        project_path, file_path = self.make_project_file(".env", "")
+        response = """```diff
+--- .env
++++ .env
+@@ -0,0 +1 @@
++TOKEN=value
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("SECRET_OR_ENV_FILE", self.warning_codes(warnings))
+
+    def test_ci_cd_warning(self):
+        project_path, file_path = self.make_project_file(".github/workflows/ci.yml", "")
+        response = """```diff
+--- .github/workflows/ci.yml
++++ .github/workflows/ci.yml
+@@ -0,0 +1 @@
++name: ci
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("CI_CD_CHANGE", self.warning_codes(warnings))
+
+    def test_sensitive_area_warning(self):
+        project_path, file_path = self.make_project_file("src/auth/login.py", "")
+        response = """```diff
+--- src/auth/login.py
++++ src/auth/login.py
+@@ -0,0 +1 @@
++def login(): pass
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path)
+        self.assertIn("SENSITIVE_AREA", self.warning_codes(warnings))
+
+    def test_rendered_report_includes_compliance_and_policy_sections(self):
+        project_path, file_path = self.make_project_file()
+        rendered = ccs.render_patch_suggestion(
+            "suggest_patch",
+            project_path,
+            {"chat_model": "local", "api_base": "http://localhost:11434", "inference_provider": "ollama", "model_tier": "deep"},
+            [file_path],
+            "## Confidence\nHigh",
+            "Fix bug",
+            True,
+            180,
+            800,
+            validation_warnings=[],
+            policy_warnings=[ccs.make_policy_warning("NETWORK_CALL", "review", "Network call")],
+            policy_warnings_enabled=True,
+        )
+        self.assertIn("## Compliance evidence", rendered)
+        self.assertIn("## Policy warnings", rendered)
+        self.assertIn("Policy warning count: `1`", rendered)
+        self.assertIn("Model tier: `deep`", rendered)
+
+    def test_rendered_report_records_disabled_policy_scan(self):
+        project_path, file_path = self.make_project_file()
+        rendered = ccs.render_patch_suggestion(
+            "suggest_patch",
+            project_path,
+            {"chat_model": "local", "api_base": "http://localhost:11434", "inference_provider": "ollama", "model_tier": "custom"},
+            [file_path],
+            "## Confidence\nHigh",
+            "Fix bug",
+            True,
+            180,
+            800,
+            validation_warnings=[],
+            policy_warnings=[],
+            policy_warnings_enabled=False,
+        )
+        self.assertIn("Policy scan status: `disabled`", rendered)
+        self.assertIn("Policy warning scan disabled by user", rendered)
+
+
 class PatchResponseValidationTest(unittest.TestCase):
     def make_project_file(self, text):
         temp_dir = tempfile.TemporaryDirectory()
