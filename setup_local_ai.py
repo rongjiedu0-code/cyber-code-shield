@@ -1186,6 +1186,13 @@ TODO completion rules:
 - Complete only the detected TODO/pass/NotImplemented marker unless the user explicitly asks for a broader change.
 - Prefer the smallest implementation that matches surrounding code style.
 - Do not invent broader architecture or unrelated files.
+- Keep validation examples consistent with the docstring, comments, and stated constraints.
+- Prefer reusing examples already present in the code comments or docstring.
+- Do not invent additional validation examples unless they are trivial and you have checked them against every stated constraint.
+- Do not label an example valid if it violates a length, type, format, or allowed-character constraint.
+- The completed function should enforce its own documented constraints instead of relying on callers to pre-normalize or pre-validate input.
+- If a constraint says lowercase ASCII letters only, do not use broad checks that also accept uppercase or Unicode letters.
+- If you are unsure about edge cases, say what is uncertain instead of inventing examples.
 """ if task_type == "complete_todo" else ""
     return f"""You are Cyber-Code-Shield Local Patch Assistant.
 
@@ -1200,13 +1207,21 @@ Rules:
 - Do not add dependencies unless the user explicitly asks for them.
 - Follow the existing project structure and style hints.
 - If there is not enough context, state what is missing instead of guessing.
-- Output a unified diff when possible.
+- If confidence is low, explain what is missing before suggesting a patch.
+- Do not invent files, APIs, tests, or business rules to make a patch look complete.
+- Output a unified diff when possible, but do not force a diff when missing context makes it unsafe.
 {todo_rules}
 Required response sections:
-1. Explanation
-2. Suggested patch
-3. Validation suggestions
-4. Risks or assumptions
+1. Confidence
+   - Use High, Medium, or Low.
+   - Briefly explain the rating.
+2. Missing context
+   - List needed files, logs, tests, schemas, or business rules.
+   - Write "None identified" only when the shown context is enough for the suggestion.
+3. Explanation
+4. Suggested patch
+5. Validation suggestions
+6. Risks or assumptions
 
 # User request or error
 

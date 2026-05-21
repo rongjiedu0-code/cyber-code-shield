@@ -35,22 +35,22 @@ Check local readiness:
 python setup_local_ai.py --check
 ```
 
-Generate a reviewable patch suggestion:
+Try the bundled error-fix demo without calling Ollama:
+
+```bash
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+```
+
+Try the bundled TODO-completion demo without calling Ollama:
+
+```bash
+python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
+```
+
+Generate a reviewable patch suggestion for your own project:
 
 ```bash
 python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --dry-run
-```
-
-Generate an error-fix suggestion from a diagnostic:
-
-```bash
-python setup_local_ai.py --fix-error --project . --error-text "src/app.py:42:13: NameError: user is not defined" --context-lite --dry-run
-```
-
-Generate a TODO completion suggestion:
-
-```bash
-python setup_local_ai.py --complete-todo --project . --files src/foo.py --context-lite --dry-run
 ```
 
 ## Current status
@@ -331,6 +331,13 @@ Use a smaller prompt for local large-model validation:
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Add validation" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600
 ```
 
+Try the bundled demos first:
+
+```bash
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
+```
+
 By default, generated suggestions are written inside the target project:
 
 ```text
@@ -348,6 +355,75 @@ Safety behavior:
 - Use `--patch-timeout` for large models that need longer first-load or generation time.
 - Use `--context-lite` to reduce project context, file snippets, and generated length for faster local validation.
 - Patch suggestion files include the original request, selected model, timeout, context mode, and note that thinking output is not requested.
+
+Quality guardrails in generated suggestions:
+
+- `Confidence` should be `High`, `Medium`, or `Low`. Treat `Low` as a signal to provide more context before applying any diff.
+- `Missing context` lists files, logs, tests, schemas, or business rules the local model still needs. Add those with `--files` when possible.
+- `Risks or assumptions` is the review checklist. Read it before copying any suggested code.
+- Local models may still make mistakes. The generated file is a reviewable suggestion, not an autonomous agent result.
+
+## Writing good local-model tasks
+
+Local models work best when the task is small, explicit, and tied to a few relevant files.
+
+Good first tasks:
+
+- Fix one error with a concrete traceback or `path:line:column` diagnostic.
+- Complete one TODO, `pass`, or `NotImplementedError` in a selected file.
+- Add small input validation to one function or command.
+- Generate a similar helper function from nearby code style.
+- Explain and suggest a reviewable diff for a narrow bug.
+
+Avoid starting with broad tasks such as:
+
+- "Refactor the whole project."
+- "Optimize all performance problems."
+- "Implement a full permission system."
+- "Understand the business and redesign the architecture."
+- "Fix everything" without logs, files, or expected behavior.
+
+A useful task description usually includes:
+
+```text
+Goal:
+Files:
+Current error or incomplete code:
+Expected behavior:
+Constraints:
+```
+
+Choose `--files` narrowly:
+
+- Start with the target file.
+- Add only 1-3 directly related files if needed.
+- Include a relevant test file when it exists.
+- Do not pass the whole project at first.
+- If output quality is poor, reduce context before adding more context.
+
+Poor task:
+
+```bash
+--task "Fix this project"
+```
+
+Better task:
+
+```bash
+--task "Fix the NameError in app.py. The function should use the raw_username parameter, strip whitespace, and return lowercase text."
+```
+
+Poor task:
+
+```bash
+--task "Add validation"
+```
+
+Better task:
+
+```bash
+--task "In app.py, validate that username is 3-20 characters and contains only letters, digits, or underscores."
+```
 
 ## Continue.dev config compatibility
 

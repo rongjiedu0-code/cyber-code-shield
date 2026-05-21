@@ -189,6 +189,21 @@ python setup_local_ai.py --restore
 - 默认输出 patch/diff 和解释，用户确认后再写入。
 - 每次写入前保留备份或可恢复路径。
 
+### 3.6 输出质量护栏
+
+后续补丁建议文件应逐步增加质量护栏，帮助用户判断本地模型是否真的有足够上下文，而不是在不确定时硬编答案。
+
+建议固定输出：
+
+- Confidence：高 / 中 / 低。
+- Missing context：还缺哪些上下文。
+- Files needed：建议用户补充哪些文件。
+- Risks / assumptions：当前建议的风险和假设。
+- Suggested verification：建议如何验证改动。
+- If uncertain, say so：不确定时明确说明，而不是伪造 diff。
+
+这个方向比继续堆新命令更重要，因为目标用户已经体验过云端 AI Coding；他们更关心在受限环境里能不能稳定节省时间。
+
 ---
 
 ## 4. 推荐项目结构
@@ -209,6 +224,8 @@ cyber-code-shield/
   scripts/
     check_environment.py
   examples/
+    demo-buggy-project/
+    demo-todo-project/
     sample-continue-config.json
   LICENSE
   .gitignore

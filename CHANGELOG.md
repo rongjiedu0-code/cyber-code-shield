@@ -16,6 +16,9 @@ v0.2 introduces the first Local Patch Assistant MVP on top of the local AI setup
 - Added `--context-lite` to reduce prompt size for faster local large-model validation.
 - Added patch suggestion metadata for original request, context mode, timeout, generated token cap, and disabled thinking output.
 - Added `--complete-todo` MVP for selected files with TODO/pass/NotImplemented-style markers.
+- Added demo projects for first-run `--fix-error` and `--complete-todo` workflows.
+- Added guidance for writing high-quality local-model tasks.
+- Added lightweight quality guardrails with `Confidence` and `Missing context` sections in patch suggestions.
 - Enhanced `--fix-error` to extract file/line locations and focused snippets from common error logs.
 
 ### Safety
