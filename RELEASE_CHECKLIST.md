@@ -1,8 +1,8 @@
 # Cyber-Code-Shield Release Checklist
 
-Current target: v0.2.0 MVP packaging.
+Current target: v0.3.0 compliance-ready patch report.
 
-Use this checklist before publishing the first public release. The v0.1 sections are baseline setup-kit checks; the v0.2 section covers the Local Patch Assistant MVP.
+Use this checklist before publishing the current public release. The v0.1 sections are baseline setup-kit checks, the v0.2 section covers the Local Patch Assistant MVP, and the v0.3 section covers compliance-ready patch reports and policy warnings.
 
 ## 1. Product positioning
 
@@ -149,17 +149,17 @@ python setup_local_ai.py --complete-todo --project . --files tmp_complete_todo_s
 rm -f tmp_complete_todo_sample.py
 ```
 
-## 10. Release packaging
+## 11. Release packaging
 
 - [ ] Remove local generated files before publishing.
 - [ ] Confirm `.gitignore` excludes generated context/report/patch files.
 - [ ] Confirm no `CYBER_CODE_SHIELD_*` generated files remain in the project root.
-- [ ] Confirm README has v0.2 demo commands.
+- [ ] Confirm README has v0.3 demo commands and patch-report guidance.
 - [ ] Confirm `LICENSE` is Apache-2.0.
-- [ ] Tag release as `v0.2.0` after final validation.
+- [ ] Tag release as `v0.3.0` after final validation.
 - [ ] Include known limitations in release notes.
 
-## 11. Known limitations for v0.2.0
+## 12. Known limitations for v0.3.0
 
 - Patch suggestions are Markdown suggestions only; there is no automatic apply mode.
 - The tool is not a full autonomous local Claude Code agent.
