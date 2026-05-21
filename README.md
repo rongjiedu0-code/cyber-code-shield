@@ -109,6 +109,17 @@ ollama pull qwen2.5-coder:32b
 ollama pull nomic-embed-text
 ```
 
+### Local model deployment tiers
+
+Cyber-Code-Shield is designed to let teams choose a local model tier that matches their hardware and compliance depth:
+
+| Tier | Typical use | Hardware fit | Example model class |
+| --- | --- | --- | --- |
+| Light / Trial | Quick local trials, demos, simple fixes, low-friction validation | Developer laptops or low-VRAM test machines | E4B / 7B-class models |
+| Deep Compliance | Higher-quality error repair, compliance review, complex patch suggestions | Enterprise workstations or servers with larger VRAM | Gemma 4 26B/31B-class models |
+
+For patch assistant workflows such as `--fix-error` and `--suggest-patch`, stronger 26B/31B-class local models usually provide better reasoning and more stable diffs. Smaller models are still useful for fast checks, especially with `--context-lite`, but users should review `Response warnings` carefully.
+
 ## Quick start
 
 Check your local environment first:
@@ -380,6 +391,7 @@ Quality guardrails in generated suggestions:
 - `Response warnings`, when present, are non-blocking checks for suspicious output such as missing sections, no-op diffs, paths outside the provided context, or a `--fix-error` patch that does not touch the primary error line.
 - `Risks or assumptions` is the review checklist. Read it before copying any suggested code.
 - Local models may still make mistakes. The generated file is a reviewable suggestion, not an autonomous agent result.
+- Match model size to task risk: lightweight models are good for quick trials, while 26B/31B-class models are better suited to deeper compliance and patch-generation work.
 
 ## Writing good local-model tasks
 

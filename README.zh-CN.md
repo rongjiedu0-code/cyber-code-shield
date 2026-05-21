@@ -115,6 +115,17 @@ ollama pull nomic-embed-text
 python setup_local_ai.py --suggest-patch --project . --task "Add validation" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600
 ```
 
+### 本地模型部署档位
+
+Cyber-Code-Shield 适合按硬件条件和合规深度选择本地模型档位：
+
+| 档位 | 典型用途 | 硬件适配 | 示例模型级别 |
+| --- | --- | --- | --- |
+| 轻量 / 试用 | 快速本地试跑、demo、简单修复、低成本验证 | 开发者笔记本或低显存测试机器 | E4B / 7B 级模型 |
+| 深度合规 | 更高质量的错误修复、合规审查、复杂补丁建议 | 企业级工作站或大显存服务器 | Gemma 4 26B/31B 级模型 |
+
+对于 `--fix-error`、`--suggest-patch` 这类补丁助手流程，26B/31B 级本地模型通常能提供更好的推理能力和更稳定的 diff。轻量模型依然适合快速验证，尤其是配合 `--context-lite` 使用，但需要认真查看 `Response warnings`。
+
 ## 快速开始
 
 先检查本地环境：
@@ -367,6 +378,7 @@ CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 - 如果出现 `Response warnings`，它们是非阻断提示，用来标记缺少章节、无效 no-op diff、引用未提供上下文的文件，或 `--fix-error` 没有触及主故障行等可疑输出。
 - `Risks or assumptions` 是人工审查重点，复制任何建议代码前都应该先看这里。
 - 本地模型仍可能犯错，生成文件只是可审查建议，不是自主 agent 的最终修改结果。
+- 按任务风险匹配模型规模：轻量模型适合快速试用，26B/31B 级模型更适合深度合规和补丁生成工作。
 
 ## 高质量任务写法指南
 
