@@ -8,6 +8,10 @@ v0.2 introduces the first Local Patch Assistant MVP on top of the local AI setup
 
 ### Added
 
+- Added custom lightweight YAML parser and serializer (`parse_yaml_text`, `dump_yaml_text`) to support zero-dependency YAML configuration parsing and merging.
+- Added support for merging Continue.dev `config.yaml` with user configuration preservation (retaining custom slash commands, custom prompts, etc.).
+- Added YAML config analysis in environment reports, mapping schema `v1` roles to local AI findings.
+- Enhanced Python project dependency and framework detection by reading `requirements.txt` and `pyproject.toml` (enabling recognition of FastAPI, Flask, Django, Streamlit, unittest, and pytest).
 - Added local patch assistant MVP with `--fix-error`, `--suggest-patch`, and `--complete-todo`.
 - Added local Ollama `/api/chat` generation for patch suggestions with thinking output disabled.
 - Added generated Markdown patch suggestion files.

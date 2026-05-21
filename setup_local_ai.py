@@ -131,6 +131,228 @@ MODEL_PROFILES = {
 }
 
 
+def parse_yaml_text(text):
+    """
+    一个轻量但对 Continue.dev config.yaml 足够鲁棒的 YAML 解析器。
+    它支持缩进嵌套的 Map (dict)、List (list) 以及基本标量（bool, int, float, str）。
+    """
+    lines = []
+    for line in text.splitlines():
+        comment_idx = line.find('#')
+        if comment_idx != -1:
+            if comment_idx == 0 or line[comment_idx - 1].isspace():
+                line = line[:comment_idx]
+        stripped = line.strip()
+        if not stripped:
+            continue
+        indent = len(line) - len(line.lstrip(' '))
+        lines.append((indent, stripped))
+
+    if not lines:
+        return {}
+
+    def parse_value(val_str):
+        val_str = val_str.strip()
+        if not val_str:
+            return None
+        if (val_str.startswith('"') and val_str.endswith('"')) or (val_str.startswith("'") and val_str.endswith("'")):
+            return val_str[1:-1]
+        if val_str.lower() in ('true', 'yes', 'on'):
+            return True
+        if val_str.lower() in ('false', 'no', 'off'):
+            return False
+        if val_str.lower() == 'null':
+            return None
+        try:
+            if '.' in val_str:
+                return float(val_str)
+            return int(val_str)
+        except ValueError:
+            return val_str
+
+    def helper(index, parent_indent):
+        if index >= len(lines):
+            return None, index
+
+        indent, content = lines[index]
+        
+        if content.startswith('-'):
+            result = []
+            while index < len(lines):
+                cur_indent, cur_content = lines[index]
+                if cur_indent < parent_indent:
+                    break
+                if cur_indent == parent_indent and cur_content.startswith('-'):
+                    list_item_str = cur_content[1:].strip()
+                    if not list_item_str:
+                        if index + 1 < len(lines) and lines[index + 1][0] > cur_indent:
+                            val, next_idx = helper(index + 1, lines[index + 1][0])
+                            result.append(val)
+                            index = next_idx
+                        else:
+                            result.append(None)
+                            index += 1
+                    elif ':' in list_item_str:
+                        k, v = list_item_str.split(':', 1)
+                        sub_map = {k.strip(): parse_value(v)}
+                        index += 1
+                        while index < len(lines):
+                            sub_indent, sub_content = lines[index]
+                            if sub_indent > cur_indent:
+                                if ':' in sub_content:
+                                    sk, sv = sub_content.split(':', 1)
+                                    if not sv.strip() and index + 1 < len(lines) and lines[index + 1][0] > sub_indent:
+                                        sval, next_idx = helper(index + 1, lines[index + 1][0])
+                                        sub_map[sk.strip()] = sval
+                                        index = next_idx
+                                    else:
+                                        sub_map[sk.strip()] = parse_value(sv)
+                                        index += 1
+                                else:
+                                    index += 1
+                            else:
+                                break
+                        result.append(sub_map)
+                    else:
+                        result.append(parse_value(list_item_str))
+                        index += 1
+                else:
+                    break
+            return result, index
+        else:
+            result = {}
+            while index < len(lines):
+                cur_indent, cur_content = lines[index]
+                if cur_indent < parent_indent:
+                    break
+                if cur_indent == parent_indent:
+                    if ':' in cur_content:
+                        key, val_str = cur_content.split(':', 1)
+                        key = key.strip()
+                        val_str = val_str.strip()
+                        if not val_str:
+                            if index + 1 < len(lines) and lines[index + 1][0] > cur_indent:
+                                val, next_idx = helper(index + 1, lines[index + 1][0])
+                                result[key] = val
+                                index = next_idx
+                            else:
+                                result[key] = None
+                                index += 1
+                        else:
+                            result[key] = parse_value(val_str)
+                            index += 1
+                    else:
+                        index += 1
+                else:
+                    index += 1
+            return result, index
+
+    root_indent = lines[0][0]
+    res, _ = helper(0, root_indent)
+    return res
+
+
+def dump_yaml_text(data, indent=0):
+    """
+    将 Python 对象序列化为简单 YAML 格式的字符串。
+    """
+    lines = []
+    spaces = " " * indent
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if value is None:
+                lines.append(f"{spaces}{key}:")
+            elif isinstance(value, (dict, list)):
+                lines.append(f"{spaces}{key}:")
+                lines.append(dump_yaml_text(value, indent + 2))
+            else:
+                if isinstance(value, bool):
+                    val_str = "true" if value else "false"
+                elif isinstance(value, str):
+                    if ":" in value or "#" in value or "-" in value or " " in value:
+                        val_str = f'"{value}"'
+                    else:
+                        val_str = value
+                else:
+                    val_str = str(value)
+                lines.append(f"{spaces}{key}: {val_str}")
+    elif isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                if not item:
+                    lines.append(f"{spaces}-")
+                    continue
+                first = True
+                for key, value in item.items():
+                    if first:
+                        prefix = f"{spaces}- {key}:"
+                        first = False
+                    else:
+                        prefix = f"{spaces}  {key}:"
+                    
+                    if value is None:
+                        lines.append(prefix)
+                    elif isinstance(value, (dict, list)):
+                        lines.append(prefix)
+                        lines.append(dump_yaml_text(value, indent + 4))
+                    else:
+                        if isinstance(value, bool):
+                            val_str = "true" if value else "false"
+                        elif isinstance(value, str):
+                            if ":" in value or "#" in value or "-" in value or " " in value:
+                                val_str = f'"{value}"'
+                            else:
+                                val_str = value
+                        else:
+                            val_str = str(value)
+                        lines.append(f"{prefix} {val_str}")
+            elif isinstance(item, list):
+                lines.append(f"{spaces}-")
+                lines.append(dump_yaml_text(item, indent + 2))
+            else:
+                if isinstance(item, bool):
+                    val_str = "true" if item else "false"
+                elif isinstance(item, str):
+                    if ":" in item or "#" in item or "-" in item or " " in item:
+                        val_str = f'"{item}"'
+                    else:
+                        val_str = item
+                else:
+                    val_str = str(item)
+                lines.append(f"{spaces}- {val_str}")
+    else:
+        if isinstance(data, bool):
+            lines.append("true" if data else "false")
+        else:
+            lines.append(str(data))
+            
+    return "\n".join(lines)
+
+
+def merge_continue_yaml(existing_yaml_data, local_yaml_data):
+    """把 Cyber-Code-Shield 的 YAML 模型配置合并到已有的 Continue YAML 配置中。"""
+    merged = dict(existing_yaml_data)
+    merged["schema"] = "v1"
+    
+    existing_models = merged.get("models", [])
+    if not isinstance(existing_models, list):
+        existing_models = []
+        
+    local_models = local_yaml_data.get("models", [])
+    if not isinstance(local_models, list):
+        local_models = []
+        
+    ccs_model_names = {model.get("name") for model in local_models if isinstance(model, dict) and model.get("name")}
+    
+    preserved_models = [
+        model for model in existing_models
+        if not (isinstance(model, dict) and model.get("name") in ccs_model_names)
+    ]
+    
+    merged["models"] = preserved_models + local_models
+    return merged
+
+
 def detect_os_name():
     """识别当前操作系统，方便终端用户确认脚本运行环境。"""
     system_name = platform.system().lower()
@@ -442,8 +664,51 @@ def install_config(model_config, dry_run=False, config_format="yaml"):
 
 def merge_config(model_config, dry_run=False, config_format="yaml"):
     """保留已有配置，并追加或更新 Cyber-Code-Shield 本地 AI 配置。"""
+    continue_dir, config_path, backup_path = resolve_continue_config_path(config_format)
+    
     if config_format == "yaml":
-        return install_config(model_config, dry_run=dry_run, config_format=config_format)
+        local_yaml_text = build_continue_yaml(model_config)
+        local_yaml_data = parse_yaml_text(local_yaml_text)
+        print_paths(model_config, config_format)
+        
+        if not config_path.exists():
+            if dry_run:
+                print("\nDry-run 模式：不会修改任何文件。")
+                print("\n覆盖安装将写入的配置内容：")
+                print(local_yaml_text)
+                return 0
+            continue_dir.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(local_yaml_text, encoding="utf-8")
+            print("已创建并安装 Cyber-Code-Shield 本地 AI 配置。")
+            print_pull_hints(model_config)
+            return 0
+            
+        try:
+            existing_yaml_data = parse_yaml_text(config_path.read_text(encoding="utf-8"))
+        except Exception as error:
+            print(f"现有 config.yaml 格式错误，无法合并：{error}")
+            return 1
+            
+        merged_data = merge_continue_yaml(existing_yaml_data, local_yaml_data)
+        merged_yaml_text = dump_yaml_text(merged_data)
+        
+        if dry_run:
+            print("\nDry-run 模式：不会修改任何文件。")
+            print("\n合并后将写入的配置内容：")
+            print(merged_yaml_text)
+            return 0
+            
+        continue_dir.mkdir(parents=True, exist_ok=True)
+        actual_backup_path = backup_existing_config(config_path, backup_path)
+        if actual_backup_path:
+            print(f"已备份原配置到：{actual_backup_path}")
+        else:
+            print("未发现旧配置，将创建新的 Continue.dev 配置。")
+            
+        config_path.write_text(merged_yaml_text, encoding="utf-8")
+        print("已合并 Cyber-Code-Shield 本地 AI 配置，并保留现有配置项。")
+        print_pull_hints(model_config)
+        return 0
 
     continue_dir, config_path, backup_path = resolve_continue_config_path(config_format)
     local_config = build_continue_config(model_config)
@@ -563,6 +828,34 @@ def detect_package_managers(project_path):
     return found
 
 
+def detect_python_packages(project_path):
+    """解析 requirements.txt 或 pyproject.toml 查找 Python 依赖包。"""
+    packages = set()
+    req_path = project_path / "requirements.txt"
+    if req_path.exists():
+        try:
+            for line in req_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                match = re.match(r"^([A-Za-z0-9_-]+)", stripped)
+                if match:
+                    packages.add(match.group(1).lower())
+        except OSError:
+            pass
+            
+    pyproject_path = project_path / "pyproject.toml"
+    if pyproject_path.exists():
+        try:
+            content = pyproject_path.read_text(encoding="utf-8", errors="ignore")
+            for match in re.finditer(r'^\s*([A-Za-z0-9_-]+)\s*=\s*[\'"{]', content, re.MULTILINE):
+                packages.add(match.group(1).lower())
+        except OSError:
+            pass
+            
+    return packages
+
+
 def detect_frameworks(project_path):
     """基于常见依赖和配置文件识别框架。"""
     frameworks = []
@@ -589,6 +882,18 @@ def detect_frameworks(project_path):
         for dependency, framework in framework_markers.items():
             if dependency in dependency_names:
                 frameworks.append(framework)
+
+    python_packages = detect_python_packages(project_path)
+    python_framework_markers = {
+        "django": "Django",
+        "flask": "Flask",
+        "fastapi": "FastAPI",
+        "tornado": "Tornado",
+        "streamlit": "Streamlit",
+    }
+    for pkg, name in python_framework_markers.items():
+        if pkg in python_packages:
+            frameworks.append(name)
 
     python_markers = {
         "manage.py": "Django",
@@ -624,6 +929,12 @@ def detect_test_tools(project_path):
         for tool in ["jest", "vitest", "mocha", "playwright", "cypress"]:
             if tool in dependency_names or tool in " ".join(scripts.values()).lower():
                 tools.append(tool)
+
+    python_packages = detect_python_packages(project_path)
+    if "pytest" in python_packages:
+        tools.append("pytest")
+    if "unittest" in python_packages:
+        tools.append("unittest")
 
     if (project_path / "pytest.ini").exists() or (project_path / "conftest.py").exists():
         tools.append("pytest")
@@ -1591,15 +1902,23 @@ def collect_continue_config_findings(config_format="yaml"):
         "codebase_indexing_mode": "Not configured",
     }
 
-    if config_format == "yaml":
-        findings["config_valid_json"] = config_path.exists()
+    if not config_path.exists():
         return findings
 
-    config_data = load_existing_config(config_path)
-    if config_data is None:
+    try:
+        if config_format == "yaml":
+            config_data = parse_yaml_text(config_path.read_text(encoding="utf-8"))
+            findings["config_valid_json"] = True
+        else:
+            config_data = json.loads(config_path.read_text(encoding="utf-8"))
+            findings["config_valid_json"] = True
+    except Exception:
+        findings["config_valid_json"] = False
         return findings
 
-    findings["config_valid_json"] = True
+    if not isinstance(config_data, dict):
+        return findings
+
     models = config_data.get("models", [])
     if isinstance(models, list):
         for model in models:
@@ -1609,22 +1928,34 @@ def collect_continue_config_findings(config_format="yaml"):
             title = str(model.get("title", ""))
             if provider:
                 findings["providers"].append(provider)
-            if title == LOCAL_CHAT_TITLE and provider == "ollama":
-                findings["has_local_chat_model"] = True
+            
+            if config_format == "yaml":
+                roles = model.get("roles", [])
+                if isinstance(roles, list):
+                    if "chat" in roles and provider == "ollama":
+                        findings["has_local_chat_model"] = True
+                    if "autocomplete" in roles and provider == "ollama":
+                        findings["has_local_autocomplete"] = True
+                    if "embed" in roles and provider == "ollama":
+                        findings["has_local_embeddings"] = True
+            else:
+                if title == LOCAL_CHAT_TITLE and provider == "ollama":
+                    findings["has_local_chat_model"] = True
 
-    autocomplete = config_data.get("tabAutocompleteModel", {})
-    if isinstance(autocomplete, dict):
-        findings["has_local_autocomplete"] = autocomplete.get("provider") == "ollama"
-        autocomplete_provider = str(autocomplete.get("provider", "")).lower()
-        if autocomplete_provider:
-            findings["providers"].append(autocomplete_provider)
+    if config_format == "json":
+        autocomplete = config_data.get("tabAutocompleteModel", {})
+        if isinstance(autocomplete, dict):
+            findings["has_local_autocomplete"] = autocomplete.get("provider") == "ollama"
+            autocomplete_provider = str(autocomplete.get("provider", "")).lower()
+            if autocomplete_provider:
+                findings["providers"].append(autocomplete_provider)
 
-    embeddings = config_data.get("embeddingsProvider", {})
-    if isinstance(embeddings, dict):
-        findings["has_local_embeddings"] = embeddings.get("provider") == "ollama"
-        embeddings_provider = str(embeddings.get("provider", "")).lower()
-        if embeddings_provider:
-            findings["providers"].append(embeddings_provider)
+        embeddings = config_data.get("embeddingsProvider", {})
+        if isinstance(embeddings, dict):
+            findings["has_local_embeddings"] = embeddings.get("provider") == "ollama"
+            embeddings_provider = str(embeddings.get("provider", "")).lower()
+            if embeddings_provider:
+                findings["providers"].append(embeddings_provider)
 
     codebase_index = config_data.get("codebaseIndex", {})
     if isinstance(codebase_index, dict):
