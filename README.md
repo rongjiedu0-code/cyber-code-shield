@@ -120,6 +120,8 @@ Cyber-Code-Shield is designed to let teams choose a local model tier that matche
 
 For patch assistant workflows such as `--fix-error` and `--suggest-patch`, stronger 26B/31B-class local models usually provide better reasoning and more stable diffs. Smaller models are still useful for fast checks, especially with `--context-lite`, but users should review `Response warnings` carefully.
 
+Model names depend on the tags configured in your local Ollama, LM Studio, llama.cpp server, or vLLM environment. Use `--chat-model` with the exact local model name exposed by your inference server.
+
 ## Quick start
 
 Check your local environment first:

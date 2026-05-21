@@ -41,7 +41,7 @@ except AttributeError:
     pass
 
 
-__version__ = "0.3.0-dev"
+__version__ = "0.3.0"
 DEFAULT_API_BASE = "http://localhost:11434"
 DEFAULT_INFERENCE_PROVIDER = "ollama"
 INFERENCE_PROVIDERS = ("ollama", "openai-compatible")
