@@ -58,7 +58,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## Current status
 
-This project is an early review-first audit and governance toolkit for local AI coding. v0.4 focuses on audit-hardened patch reports; v0.4.1 focuses on clearer positioning, showcase artifacts, and enterprise pilot readiness.
+This project is an early review-first audit and governance toolkit for local AI coding. v0.5 is the first low-risk architecture split: audit/report, policy warning, validation, hashing, serialization, patch parsing, and error-location helpers now live in the `cyber_code_shield` package while the CLI behavior remains stable.
 
 | Capability | Status | Command | Source writes |
 | --- | --- | --- | --- |
@@ -76,10 +76,10 @@ This project is an early review-first audit and governance toolkit for local AI 
 
 Planned next:
 
-- v0.4.1 showcase docs, sample patch reports, and enterprise pilot material
-- v0.5 internal architecture split for audit/report, policy warnings, validation, inference clients, project context, and CLI entrypoint
+- finish the remaining architecture split for local inference clients, project context, and the CLI entrypoint
 - more precise context selection and snippet trimming
 - similar-module patch generation that follows the current codebase style
+- policy profiles, risk scoring, and report bundles for enterprise review workflows
 - desktop installer work later, after CLI internals are stable
 
 ## Requirements

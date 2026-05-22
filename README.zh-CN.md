@@ -58,7 +58,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## 当前状态
 
-当前项目是早期的本地 AI Coding 审查与治理工具包。v0.4 重点是 audit-hardened patch reports；v0.4.1 重点是更清晰的产品定位、展示样例和企业试点材料。
+当前项目是早期的本地 AI Coding 审查与治理工具包。v0.5 是第一阶段低风险架构拆分：audit/report、policy warning、validation、hashing、serialization、patch parsing 和 error-location helper 已经进入 `cyber_code_shield` 包，同时保持 CLI 行为稳定。
 
 | 能力 | 状态 | 命令 | 是否写源码 |
 | --- | --- | --- | --- |
@@ -76,10 +76,10 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 后续计划：
 
-- v0.4.1：展示文档、sample patch reports 和企业试点材料
-- v0.5：围绕 audit/report、policy warnings、validation、inference clients、project context 和 CLI entrypoint 做内部架构拆分
+- 继续完成 local inference clients、project context 和 CLI entrypoint 的剩余架构拆分
 - 更精准的上下文选择和代码片段裁剪
 - 根据相似模块生成同风格补丁
+- 面向企业复核流程的 policy profile、risk score 和 report bundle
 - 桌面安装器后置，等 CLI 内部结构稳定后再做
 
 ## 安装要求

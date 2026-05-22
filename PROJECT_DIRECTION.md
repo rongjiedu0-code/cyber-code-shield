@@ -396,11 +396,15 @@ cyber-code-shield/
 
 目标：在不改变 CLI 行为的前提下，把当前单脚本内已经形成的治理能力拆成更清晰的内部模块，为后续 policy profile、risk score、report bundle 和企业流程集成做准备。
 
-优先拆分：
+v0.5 第一阶段已完成：
 
-- `audit/report`：report ID、hashes、schema、Markdown/JSON rendering
+- `patch_report`：report ID、hashes、schema、Markdown/JSON rendering
 - `policy_warnings`：policy warning detection、severity、企业复核信号
 - `validation`：response sections、diff sanity、path/context checks
+- `hashing` / `serialization` / `patch_parsing` / `error_locations`：审计与校验辅助能力
+
+后续继续拆分：
+
 - `inference`：Ollama 和 OpenAI-compatible 本地推理客户端
 - `project_context`：项目扫描、上下文摘要、snippet 选择
 - `cli`：命令行参数和 orchestration entrypoint
@@ -430,13 +434,11 @@ cyber_code_shield/
 
 下一步优先做这几件事：
 
-1. 完成 v0.4.1 展示层：README 定位、sample patch reports、enterprise pilot checklist。
-2. 准备 v0.4.1 release notes，明确“review-first audit layer”定位和审计边界。
-3. 按 `RELEASE_CHECKLIST.md` 跑一遍非破坏性验证命令，确认 sample JSON 合法且没有生成产物误提交。
-4. v0.5 开始做低风险架构拆分，优先拆 audit/report、policy warnings、validation。
-5. 继续优化上下文选择和 snippet 裁剪，让本地模型输入更聚焦。
-6. 后续再考虑 `add-similar`、policy profile、risk score、企业部署材料和桌面安装器。
-7. 暂不做自动 apply，除非补丁生成质量和回滚机制足够稳定。
+1. 按 `RELEASE_CHECKLIST.md` 跑一遍非破坏性验证命令，确认 v0.5 架构拆分没有改变 CLI 行为。
+2. 继续完成 `inference`、`project_context` 和 `cli` 的低风险拆分，但不要为了拆分而重写业务逻辑。
+3. 继续优化上下文选择和 snippet 裁剪，让本地模型输入更聚焦。
+4. 后续再考虑 `add-similar`、policy profile、risk score、企业部署材料和桌面安装器。
+5. 暂不做自动 apply，除非补丁生成质量和回滚机制足够稳定。
 
 ---
 

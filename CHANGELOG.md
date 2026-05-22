@@ -2,6 +2,21 @@
 
 All notable changes to Cyber-Code-Shield will be documented in this file.
 
+## [0.5.0] - Unreleased
+
+v0.5.0 starts the low-risk internal architecture split while keeping the CLI behavior stable.
+
+### Changed
+
+- Moved patch report rendering, policy warnings, response validation, hashing, serialization, patch parsing, and error-location helpers into the `cyber_code_shield` package.
+- Kept `setup_local_ai.py` as the CLI entrypoint while delegating audit/governance helpers to package modules.
+- Updated documentation to describe v0.5 as architecture-split phase 1.
+
+### Safety
+
+- CLI behavior remains review-first and manual-apply only.
+- Existing unit tests cover patch reports, policy warnings, validation, and local inference helper behavior after the split.
+
 ## [0.4.1] - Unreleased
 
 v0.4.1 repositions Cyber-Code-Shield as a review-first audit layer for local AI coding and adds showcase material for enterprise evaluation.
