@@ -2,6 +2,27 @@
 
 All notable changes to Cyber-Code-Shield will be documented in this file.
 
+## [0.4.1] - Unreleased
+
+v0.4.1 repositions Cyber-Code-Shield as a review-first audit layer for local AI coding and adds showcase material for enterprise evaluation.
+
+### Added
+
+- Added sanitized sample Markdown patch report.
+- Added sanitized sample JSON patch report.
+- Added enterprise pilot checklist for privacy-sensitive and strong-compliance teams.
+
+### Changed
+
+- Repositioned README messaging around review-first local AI coding governance and audit evidence.
+- Updated product direction to prioritize audit/report/policy architecture before desktop installer work.
+- Clarified that Cyber-Code-Shield is not a full autonomous coding agent or Cursor/Claude Code replacement.
+
+### Safety
+
+- Sample reports use sanitized project paths and synthetic model output.
+- Patch suggestions remain manual-review-first and are not applied automatically.
+
 ## [0.4.0] - Unreleased
 
 v0.4 hardens Local Patch Assistant reports as audit-friendly review artifacts while keeping the workflow local-first and manual-review-first.

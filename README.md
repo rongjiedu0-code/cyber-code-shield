@@ -2,19 +2,22 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Cyber-Code-Shield is a local-first AI coding setup kit and patch assistant for developers and teams working in privacy-sensitive or strong-compliance environments.
+Cyber-Code-Shield is a review-first audit layer for local AI coding. It helps privacy-sensitive and compliance-heavy teams use local coding models while keeping patch suggestions manual, reviewable, and evidence-backed.
 
-It helps you keep AI coding useful when cloud AI tools are restricted or not allowed:
+It is not a full autonomous coding agent and does not apply patches automatically. Its job is to turn local model output into reviewable patch reports with audit evidence and policy signals.
 
-- configure local Ollama + Continue.dev for VS Code
-- check local AI environment readiness
-- analyze existing projects and generate local project context
-- generate reviewable patch suggestions from local models
-- fix errors with file/line context from stack traces or diagnostics
-- complete TODO, `pass`, and `NotImplementedError` placeholders
+It helps teams keep AI coding useful when cloud AI tools are restricted or not allowed:
+
+- generate audit-friendly Markdown and JSON patch reports
+- record report IDs, model metadata, prompt/response hashes, reviewed file hashes, and warning counts
+- flag non-blocking policy warnings for dependency, network, shell, secret, CI/CD, and sensitive-area changes
 - keep source changes manual and reviewable
+- check local AI environment readiness
+- configure local Ollama + Continue.dev for VS Code
+- analyze existing projects and generate local project context
+- generate local patch, error-fix, and TODO-completion suggestions
 
-> Goal: preserve AI coding productivity without sending project code, logs, or business context to cloud AI providers.
+> Goal: preserve AI coding productivity while giving developers, security reviewers, and compliance teams a local, reviewable evidence trail.
 
 ## Who is this for?
 
@@ -55,7 +58,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## Current status
 
-This project is an early v0.4 MVP focused on local-first, review-first patch suggestions with audit-hardened reports.
+This project is an early review-first audit and governance toolkit for local AI coding. v0.4 focuses on audit-hardened patch reports; v0.4.1 focuses on clearer positioning, showcase artifacts, and enterprise pilot readiness.
 
 | Capability | Status | Command | Source writes |
 | --- | --- | --- | --- |
@@ -73,11 +76,11 @@ This project is an early v0.4 MVP focused on local-first, review-first patch sug
 
 Planned next:
 
-- Similar-module patch generation that follows the current codebase style
-- More precise context selection and snippet trimming
-- Stronger enterprise deployment and compliance documentation
-- More detailed framework/style detection
-- Desktop installer prototype
+- v0.4.1 showcase docs, sample patch reports, and enterprise pilot material
+- v0.5 internal architecture split for audit/report, policy warnings, validation, inference clients, project context, and CLI entrypoint
+- more precise context selection and snippet trimming
+- similar-module patch generation that follows the current codebase style
+- desktop installer work later, after CLI internals are stable
 
 ## Requirements
 
@@ -547,12 +550,15 @@ The `examples/` directory contains sample outputs and configuration scenarios:
 - `continue-after-merge.json`: example Continue.dev config after local Ollama settings are merged
 - `sample-project-context.md`: example output from `--project PATH`
 - `sample-offline-report.md`: example Markdown output from `--report`
+- `sample-patch-report.md`: sanitized audit-friendly Markdown patch report
+- `sample-patch-report.json`: sanitized machine-readable JSON patch report
+- [`ENTERPRISE_PILOT_CHECKLIST.md`](ENTERPRISE_PILOT_CHECKLIST.md): checklist for evaluating local-first AI coding governance in enterprise pilots
 
 These examples are illustrative and do not contain real credentials.
 
 ## Product direction
 
-Cyber-Code-Shield is intentionally not trying to clone the full Claude Code agent experience in its first release. The practical near-term direction is narrower: local model driven code repair, TODO completion, and patch generation.
+Cyber-Code-Shield is intentionally not trying to clone the full Claude Code agent experience. The near-term direction is to sit beside local coding models as a governance and audit layer: it turns local model output into reviewable patch reports, records evidence, highlights policy risks, and keeps source modifications under human control.
 
 Current MVP workflow examples:
 

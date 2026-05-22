@@ -1,8 +1,8 @@
 # Cyber-Code-Shield Release Checklist
 
-Current target: v0.4.0 audit-hardened patch reports.
+Current target: v0.4.1 review-first audit positioning and showcase artifacts.
 
-Use this checklist before publishing the current public release. The v0.1 sections are baseline setup-kit checks, the v0.2 section covers the Local Patch Assistant MVP, v0.3 covers compliance-ready patch reports and policy warnings, and v0.4 covers audit trail hardening and JSON patch reports.
+Use this checklist before publishing the current public release. The v0.1 sections are baseline setup-kit checks, the v0.2 section covers the Local Patch Assistant MVP, v0.3 covers compliance-ready patch reports and policy warnings, v0.4 covers audit trail hardening and JSON patch reports, and v0.4.1 covers product positioning and enterprise evaluation material.
 
 ## 1. Product positioning
 
@@ -121,7 +121,29 @@ Use this checklist before publishing the current public release. The v0.1 sectio
 - [ ] Hash documentation clearly says fingerprints are not encryption or anonymization.
 - [ ] Patch assistant commands still do not modify business source files or apply patches automatically.
 
-## 11. Validation commands
+## 11. v0.4.1 Review-first audit positioning
+
+- [ ] README first screen positions Cyber-Code-Shield as a review-first audit layer for local AI coding.
+- [ ] README clearly says the project is not a full autonomous coding agent.
+- [ ] README links sanitized Markdown and JSON sample patch reports.
+- [ ] Chinese README matches the English positioning.
+- [ ] PROJECT_DIRECTION.md uses the review-first audit/governance framing.
+- [ ] PROJECT_DIRECTION.md changes v0.5 from desktop installer to architecture split.
+- [ ] CHANGELOG.md includes v0.4.1 planned/unreleased notes.
+- [ ] Enterprise pilot checklist exists and does not overclaim formal security certification.
+- [ ] Sample JSON patch report is valid JSON.
+- [ ] Sample reports do not contain local absolute paths, secrets, or generated timestamped filenames.
+
+## 12. v0.5 Architecture split readiness
+
+- [ ] Current CLI behavior is documented before splitting.
+- [ ] Patch report schema/rendering responsibilities are identified.
+- [ ] Policy warning detection responsibilities are identified.
+- [ ] Local inference client responsibilities are identified.
+- [ ] Project context collection responsibilities are identified.
+- [ ] Tests cover behavior before module extraction begins.
+
+## 13. Validation commands
 
 Run before release:
 
@@ -133,6 +155,7 @@ python setup_local_ai.py --config-format yaml --dry-run
 python setup_local_ai.py --config-format json --dry-run
 python -m json.tool examples/continue-before-merge.json >/dev/null
 python -m json.tool examples/continue-after-merge.json >/dev/null
+python -m json.tool examples/sample-patch-report.json
 python setup_local_ai.py --help
 python setup_local_ai.py --check
 python setup_local_ai.py --merge --dry-run
@@ -163,17 +186,17 @@ python setup_local_ai.py --complete-todo --project . --files tmp_complete_todo_s
 rm -f tmp_complete_todo_sample.py
 ```
 
-## 12. Release packaging
+## 14. Release packaging
 
 - [ ] Remove local generated files before publishing.
 - [ ] Confirm `.gitignore` excludes generated context/report/patch files.
 - [ ] Confirm no `CYBER_CODE_SHIELD_*` generated files remain in the project root.
-- [ ] Confirm README has v0.4 demo commands and patch-report guidance.
+- [ ] Confirm README has v0.4.1 review-first positioning, sample patch report links, and enterprise pilot guidance.
 - [ ] Confirm `LICENSE` is Apache-2.0.
-- [ ] Tag release as `v0.4.0` after final validation.
+- [ ] Tag release as `v0.4.1` after final validation.
 - [ ] Include known limitations in release notes.
 
-## 13. Known limitations for v0.4.0
+## 15. Known limitations for v0.4.1
 
 - Patch suggestions are Markdown or JSON reports only; there is no automatic apply mode.
 - The tool is not a full autonomous local Claude Code agent.

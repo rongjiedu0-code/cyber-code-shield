@@ -2,19 +2,22 @@
 
 [English](README.md) | 简体中文
 
-Cyber-Code-Shield 是一个面向内网、离线、强合规和高隐私开发环境的本地 AI 编程工具包与补丁助手。
+Cyber-Code-Shield 是面向本地 AI Coding 的审查优先审计层，帮助内网、离线、强合规和高隐私团队在使用本地代码模型时，生成可复核、可留痕、可治理的补丁建议报告。
 
-它的目标是在不能使用云端 AI 编程工具时，尽量保留 AI Coding 的生产力：
+它不是完整的自主编程 Agent，也不会自动应用补丁。它的核心价值是把本地模型输出变成可人工审查、可审计留痕、带 policy 信号的变更建议。
 
-- 配置本地 Ollama + Continue.dev，让 VS Code 使用本地模型
-- 检查本地 AI 编程环境是否准备好
-- 分析已有项目并生成本地项目上下文
-- 使用本地模型生成可审查的代码补丁建议
-- 根据错误日志、堆栈信息或 `path:line:column` 诊断生成修复建议
-- 根据 TODO、`pass`、`NotImplementedError` 等占位实现生成补全建议
+它的目标是在不能使用云端 AI 编程工具时，尽量保留 AI Coding 的生产力，同时给开发、安全和合规团队留下可复核证据：
+
+- 生成审计友好的 Markdown 和 JSON 补丁报告
+- 记录 report ID、模型元数据、prompt/response hash、已审查文件 hash 和 warning 数量
+- 标记依赖、网络、shell、secret、CI/CD、敏感区域等非阻断 policy warnings
 - 默认不自动修改源码，所有改动都需要人工审查后手动应用
+- 检查本地 AI 编程环境是否准备好
+- 配置本地 Ollama + Continue.dev，让 VS Code 使用本地模型
+- 分析已有项目并生成本地项目上下文
+- 使用本地模型生成补丁、错误修复和 TODO 补全建议
 
-> 目标：在不把项目代码、日志、文档或业务上下文发给云端 AI 的前提下，继续获得 AI 编程能力。
+> 目标：在不把项目代码、日志、文档或业务上下文发给云端 AI 的前提下，继续获得 AI 编程能力，并保留本地、可审查的证据链。
 
 ## 适合谁？
 
@@ -55,7 +58,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## 当前状态
 
-当前项目是早期 v0.4 MVP，重点是本地优先、人工审查优先的补丁建议，以及更适合审计留痕的报告。
+当前项目是早期的本地 AI Coding 审查与治理工具包。v0.4 重点是 audit-hardened patch reports；v0.4.1 重点是更清晰的产品定位、展示样例和企业试点材料。
 
 | 能力 | 状态 | 命令 | 是否写源码 |
 | --- | --- | --- | --- |
@@ -73,11 +76,11 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 后续计划：
 
-- 根据相似模块生成同风格补丁
+- v0.4.1：展示文档、sample patch reports 和企业试点材料
+- v0.5：围绕 audit/report、policy warnings、validation、inference clients、project context 和 CLI entrypoint 做内部架构拆分
 - 更精准的上下文选择和代码片段裁剪
-- 更完整的企业部署和合规说明材料
-- 更详细的框架/工具识别
-- 桌面安装器原型
+- 根据相似模块生成同风格补丁
+- 桌面安装器后置，等 CLI 内部结构稳定后再做
 
 ## 安装要求
 
@@ -534,12 +537,15 @@ python setup_local_ai.py --api-base http://127.0.0.1:11434 --check
 - `continue-after-merge.json`：合并本地 Ollama 设置后的 Continue.dev 配置示例
 - `sample-project-context.md`：`--project PATH` 输出示例
 - `sample-offline-report.md`：`--report` Markdown 输出示例
+- `sample-patch-report.md`：脱敏的 Markdown 补丁审计报告示例
+- `sample-patch-report.json`：脱敏的机器可读 JSON 补丁审计报告示例
+- [`ENTERPRISE_PILOT_CHECKLIST.md`](ENTERPRISE_PILOT_CHECKLIST.md)：企业试点评估本地 AI Coding 治理流程的 checklist
 
 这些示例不包含真实密钥。
 
 ## 产品方向
 
-Cyber-Code-Shield 第一版不尝试复制完整 Claude Code Agent 体验。近期方向更窄，也更现实：本地模型驱动的代码修复、TODO 补全和补丁生成。
+Cyber-Code-Shield 不尝试复制完整 Claude Code Agent 体验。近期方向是作为本地代码模型旁边的治理和审计层：把本地模型输出变成可审查补丁报告，记录证据，提示 policy 风险，并让源码修改始终由人控制。
 
 当前 MVP 工作流示例：
 
