@@ -428,6 +428,39 @@ cyber_code_shield/
 
 桌面安装器后置，等 CLI 内部结构和审计核心稳定后再考虑。
 
+### v0.6 Policy profiles 与 report bundle
+
+v0.6 的主线不是继续做更像 Agent 的自动编程能力，而是把 Cyber-Code-Shield 从“补丁建议报告工具”推进到“本地 AI Coding 审查证据生成器”。
+
+核心目标：
+
+- 引入可配置 `policy profile`，把固定 policy warnings 变成面向不同复核场景的规则集合。
+- 引入 `report bundle`，把 Markdown/JSON 报告、policy warnings、validation warnings、reviewed file hashes、environment summary 和 manifest 打包成一组可保存证据。
+- 保持 review-first 和 manual-apply 边界，不做自动 apply patch。
+- 明确项目不是正式合规认证工具，而是为安全、IT、合规和研发团队生成本地复核证据。
+
+建议优先 profile：
+
+- `basic`：当前默认 warning 行为。
+- `enterprise-strict`：提高 secret、shell、network、dependency、CI/CD 等高风险变更的复核优先级。
+- `china-privacy`：强调个人信息、日志、API key、云端 provider、可能的数据出境路径。
+- `supply-chain`：强调 dependency、lockfile、package scripts、CI/CD、Dockerfile 和构建链路。
+
+建议 report bundle 结构：
+
+```text
+CYBER_CODE_SHIELD_BUNDLE_YYYYMMDD-HHMMSS/
+  report.md
+  report.json
+  reviewed-files.json
+  policy-warnings.json
+  validation-warnings.json
+  environment-summary.json
+  manifest.json
+```
+
+`manifest.json` 应记录 bundle ID、report ID、tool version、generated_at、model、inference provider、api base、reviewed file hashes、report hashes，以及 `source_files_modified_automatically: false`。
+
 ---
 
 ## 8. 当前优先级
@@ -435,10 +468,11 @@ cyber_code_shield/
 下一步优先做这几件事：
 
 1. 按 `RELEASE_CHECKLIST.md` 跑一遍非破坏性验证命令，确认 v0.5 架构拆分没有改变 CLI 行为。
-2. 继续完成 `inference`、`project_context` 和 `cli` 的低风险拆分，但不要为了拆分而重写业务逻辑。
-3. 继续优化上下文选择和 snippet 裁剪，让本地模型输入更聚焦。
-4. 后续再考虑 `add-similar`、policy profile、risk score、企业部署材料和桌面安装器。
-5. 暂不做自动 apply，除非补丁生成质量和回滚机制足够稳定。
+2. v0.6 优先做 `policy profile` 和 `report bundle`，把项目推进到“本地 AI Coding 审查证据生成器”。
+3. 继续完成 `inference`、`project_context` 和 `cli` 的低风险拆分，但不要为了拆分而重写业务逻辑。
+4. 继续优化上下文选择和 snippet 裁剪，让本地模型输入更聚焦。
+5. 后续再考虑 `add-similar`、risk score、企业部署材料和桌面安装器。
+6. 暂不做自动 apply，除非补丁生成质量和回滚机制足够稳定。
 
 ---
 

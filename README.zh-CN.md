@@ -76,10 +76,10 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 后续计划：
 
+- v0.6 增加面向 basic、enterprise-strict、中国隐私复核和软件供应链复核的 policy profiles
+- v0.6 增加 report bundle，把 Markdown/JSON 报告、warning 文件、reviewed-file hashes、环境摘要和 manifest 打包成可保存证据
 - 继续完成 local inference clients、project context 和 CLI entrypoint 的剩余架构拆分
 - 更精准的上下文选择和代码片段裁剪
-- 根据相似模块生成同风格补丁
-- 面向企业复核流程的 policy profile、risk score 和 report bundle
 - 桌面安装器后置，等 CLI 内部结构稳定后再做
 
 ## 安装要求

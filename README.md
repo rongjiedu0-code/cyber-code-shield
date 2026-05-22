@@ -76,10 +76,10 @@ This project is an early review-first audit and governance toolkit for local AI 
 
 Planned next:
 
+- v0.6 policy profiles for basic, enterprise-strict, China privacy, and supply-chain review workflows
+- v0.6 report bundles that package Markdown/JSON reports, warning files, reviewed-file hashes, environment summaries, and a manifest
 - finish the remaining architecture split for local inference clients, project context, and the CLI entrypoint
 - more precise context selection and snippet trimming
-- similar-module patch generation that follows the current codebase style
-- policy profiles, risk scoring, and report bundles for enterprise review workflows
 - desktop installer work later, after CLI internals are stable
 
 ## Requirements

@@ -33,6 +33,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+from cyber_code_shield.constants import DEFAULT_POLICY_PROFILE, POLICY_PROFILE_NAMES
 from cyber_code_shield.hashing import collect_reviewed_file_hashes, hash_text_sha256
 from cyber_code_shield.patch_report import (
     build_patch_report_data,
@@ -40,7 +41,9 @@ from cyber_code_shield.patch_report import (
     render_patch_report_by_format,
     render_patch_suggestion,
 )
+from cyber_code_shield.policy_profiles import get_policy_profile_definition
 from cyber_code_shield.policy_warnings import detect_policy_warnings, make_policy_warning
+from cyber_code_shield.report_bundle import BUNDLE_ARTIFACTS, get_default_bundle_output_dir, write_report_bundle
 from cyber_code_shield.serialization import format_json
 from cyber_code_shield.validation import validate_patch_response
 
@@ -52,7 +55,7 @@ except AttributeError:
     pass
 
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 DEFAULT_API_BASE = "http://localhost:11434"
 DEFAULT_INFERENCE_PROVIDER = "ollama"
 INFERENCE_PROVIDERS = ("ollama", "openai-compatible")
@@ -1846,10 +1849,26 @@ def resolve_patch_output_path(project_path, output_arg, task_type, patch_report_
     return get_default_patch_output_path(project_path, task_type, patch_report_format)
 
 
-def preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=None):
+def resolve_bundle_output_dir(project_path, bundle_output_arg):
+    """解析 report bundle 输出目录。"""
+    if bundle_output_arg:
+        return Path(bundle_output_arg).expanduser().resolve()
+    return get_default_bundle_output_dir(project_path)
+
+
+def preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=None, policy_profile=DEFAULT_POLICY_PROFILE, report_bundle=False):
     """打印补丁助手 dry-run 预览。"""
+    policy_definition = get_policy_profile_definition(policy_profile)
     print(f"项目路径：{project_path}")
-    print(f"补丁建议文件：{output_path}")
+    if report_bundle:
+        print(f"Report bundle 目录：{output_path}")
+        print("Report bundle 文件：")
+        for artifact_name in BUNDLE_ARTIFACTS:
+            print(f"- {artifact_name}")
+        print("- manifest.json")
+    else:
+        print(f"补丁建议文件：{output_path}")
+    print(f"Policy profile：{policy_definition['profile']} — {policy_definition['label']}")
     print("参考文件：")
     if selected_files:
         for file_path in selected_files:
@@ -1859,13 +1878,16 @@ def preview_patch_prompt(project_path, output_path, selected_files, prompt, erro
     if error_locations:
         print("\n检测到的错误位置：")
         print(render_error_location_list(error_locations))
-    print("\nDry-run 模式：不会调用 Ollama，也不会写入补丁建议文件。")
+    print("\nDry-run 模式：不会调用本地模型，也不会写入补丁建议或 report bundle 文件。")
     print("\n将发送给本地模型的提示词预览：")
     print(prompt)
 
 
-def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", error_locations=None, policy_warnings_enabled=True):
+def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", error_locations=None, policy_warnings_enabled=True, policy_profile=DEFAULT_POLICY_PROFILE, report_bundle=False, bundle_output_arg=None, config_format="yaml"):
     """运行本地补丁助手通用流程。"""
+    if report_bundle and patch_output_arg:
+        print("--report-bundle 会写入证据目录；请使用 --bundle-output，而不是 --patch-output。")
+        return 1
     if not project_arg:
         print("补丁助手命令需要指定 --project。")
         return 1
@@ -1894,10 +1916,10 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         focus_lines_by_file=focus_lines_by_file,
     )
     prompt = build_patch_prompt(task_type, project_context_markdown, user_request, file_snippets)
-    output_path = resolve_patch_output_path(project_path, patch_output_arg, task_type, patch_report_format)
+    output_path = resolve_bundle_output_dir(project_path, bundle_output_arg) if report_bundle else resolve_patch_output_path(project_path, patch_output_arg, task_type, patch_report_format)
 
     if dry_run:
-        preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=error_locations)
+        preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=error_locations, policy_profile=policy_profile, report_bundle=report_bundle)
         return 0
 
     try:
@@ -1908,7 +1930,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         return 1
 
     validation_warnings = validate_patch_response(model_response, selected_files, project_path, error_locations=error_locations)
-    policy_warnings = detect_policy_warnings(model_response, selected_files, project_path, error_locations=error_locations) if policy_warnings_enabled else []
+    policy_warnings = detect_policy_warnings(model_response, selected_files, project_path, error_locations=error_locations, policy_profile=policy_profile) if policy_warnings_enabled else []
     patch_report = build_patch_report_data(
         task_type,
         project_path,
@@ -1924,7 +1946,19 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         validation_warnings=validation_warnings,
         policy_warnings=policy_warnings,
         policy_warnings_enabled=policy_warnings_enabled,
+        policy_profile=policy_profile,
     )
+    if report_bundle:
+        environment_summary = build_patch_environment_summary(model_config, config_format=config_format)
+        try:
+            write_report_bundle(output_path, patch_report, environment_summary)
+        except FileExistsError as error:
+            print(error)
+            return 1
+        print(f"已生成本地补丁建议 report bundle：{output_path}")
+        print("未自动修改任何源码文件，请人工审查后再应用建议。")
+        return 0
+
     rendered_suggestion = render_patch_report_by_format(patch_report, patch_report_format)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_suggestion, encoding="utf-8")
@@ -1933,7 +1967,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
     return 0
 
 
-def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
+def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True, policy_profile=DEFAULT_POLICY_PROFILE, report_bundle=False, bundle_output_arg=None, config_format="yaml"):
     """根据错误日志生成本地修复建议。"""
     if bool(error_log_arg) == bool(error_text_arg):
         print("--fix-error 需要且只能指定 --error-log 或 --error-text 其中一个。")
@@ -2011,10 +2045,14 @@ def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, file
         patch_report_format,
         error_locations=error_locations,
         policy_warnings_enabled=policy_warnings_enabled,
+        policy_profile=policy_profile,
+        report_bundle=report_bundle,
+        bundle_output_arg=bundle_output_arg,
+        config_format=config_format,
     )
 
 
-def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
+def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True, policy_profile=DEFAULT_POLICY_PROFILE, report_bundle=False, bundle_output_arg=None, config_format="yaml"):
     """根据用户任务描述生成本地补丁建议。"""
     if not task_arg:
         print("--suggest-patch 需要指定 --task。")
@@ -2032,10 +2070,14 @@ def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_outp
         context_lite,
         patch_report_format,
         policy_warnings_enabled=policy_warnings_enabled,
+        policy_profile=policy_profile,
+        report_bundle=report_bundle,
+        bundle_output_arg=bundle_output_arg,
+        config_format=config_format,
     )
 
 
-def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
+def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True, policy_profile=DEFAULT_POLICY_PROFILE, report_bundle=False, bundle_output_arg=None, config_format="yaml"):
     """根据选中文件中的 TODO/未实现标记生成补全建议。"""
     if not project_arg:
         print("--complete-todo 需要指定 --project。")
@@ -2081,6 +2123,10 @@ def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_outp
         context_lite,
         patch_report_format,
         policy_warnings_enabled=policy_warnings_enabled,
+        policy_profile=policy_profile,
+        report_bundle=report_bundle,
+        bundle_output_arg=bundle_output_arg,
+        config_format=config_format,
     )
 
 
@@ -2177,6 +2223,31 @@ def collect_continue_config_findings(config_format="yaml"):
 def collect_cloud_api_env_vars():
     """只检测常见云端 AI 环境变量是否存在，不读取或输出密钥值。"""
     return [name for name in CLOUD_API_ENV_VARS if os.environ.get(name)]
+
+
+def build_patch_environment_summary(model_config, config_format="yaml"):
+    """构建补丁建议 report bundle 的轻量环境摘要。"""
+    return {
+        "schema_version": "cyber-code-shield.environment-summary.v1",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "os": detect_os_name(),
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "api_base": model_config["api_base"],
+        "api_base_is_local": is_local_api_base(model_config["api_base"]),
+        "inference_provider": model_config.get("inference_provider", DEFAULT_INFERENCE_PROVIDER),
+        "selected_models": {
+            "chat": model_config["chat_model"],
+            "autocomplete": model_config["autocomplete_model"],
+            "embedding": model_config["embedding_model"],
+        },
+        "continue_findings": collect_continue_config_findings(config_format),
+        "cloud_api_env_vars_present": collect_cloud_api_env_vars(),
+        "notes": [
+            "Only environment signals are recorded; secret values are never read or printed.",
+            "This summary is review evidence, not a formal security audit.",
+        ],
+    }
 
 
 def build_environment_report(model_config, config_format="yaml"):
@@ -2380,6 +2451,8 @@ def build_parser():
     parser.add_argument("--task", help="补丁任务描述，用于 --suggest-patch；也可作为 --complete-todo 的额外指导")
     parser.add_argument("--files", nargs="+", help="限定提供给本地模型参考的项目文件；指定得越准，补丁建议越稳定")
     parser.add_argument("--patch-output", help="指定补丁建议报告输出路径，默认根据 --patch-report-format 使用 .md 或 .json")
+    parser.add_argument("--report-bundle", action="store_true", help="生成包含 Markdown/JSON 报告、warnings、hashes、环境摘要和 manifest 的证据目录")
+    parser.add_argument("--bundle-output", help="指定 report bundle 输出目录，默认写入项目目录下的 CYBER_CODE_SHIELD_BUNDLE_*")
     parser.add_argument(
         "--patch-report-format",
         choices=PATCH_REPORT_FORMATS,
@@ -2394,6 +2467,12 @@ def build_parser():
     )
     parser.add_argument("--context-lite", action="store_true", help="使用更短项目上下文，速度更快但可用上下文更少")
     parser.add_argument("--no-policy-warnings", action="store_true", help="禁用补丁建议中的非阻断 policy warning 扫描")
+    parser.add_argument(
+        "--policy-profile",
+        choices=POLICY_PROFILE_NAMES,
+        default=DEFAULT_POLICY_PROFILE,
+        help="选择补丁建议的 policy warning 复核档案，默认 basic",
+    )
     parser.add_argument(
         "--model-tier",
         choices=MODEL_TIERS,
@@ -2453,6 +2532,10 @@ def main():
             args.context_lite,
             args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
+            policy_profile=args.policy_profile,
+            report_bundle=args.report_bundle,
+            bundle_output_arg=args.bundle_output,
+            config_format=args.config_format,
         )
 
     if args.suggest_patch:
@@ -2467,6 +2550,10 @@ def main():
             args.context_lite,
             args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
+            policy_profile=args.policy_profile,
+            report_bundle=args.report_bundle,
+            bundle_output_arg=args.bundle_output,
+            config_format=args.config_format,
         )
 
     if args.complete_todo:
@@ -2481,6 +2568,10 @@ def main():
             args.context_lite,
             args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
+            policy_profile=args.policy_profile,
+            report_bundle=args.report_bundle,
+            bundle_output_arg=args.bundle_output,
+            config_format=args.config_format,
         )
 
     if args.project:

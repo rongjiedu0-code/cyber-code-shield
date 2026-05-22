@@ -2,6 +2,17 @@
 
 All notable changes to Cyber-Code-Shield will be documented in this file.
 
+## [0.6.0] - Planned
+
+v0.6.0 will focus on policy profiles and report bundles so Cyber-Code-Shield can generate stronger review evidence for local AI coding workflows.
+
+### Planned
+
+- Add policy profiles for `basic`, `enterprise-strict`, `china-privacy`, and `supply-chain` review workflows.
+- Add report bundles that package Markdown/JSON reports, reviewed-file hashes, policy warnings, validation warnings, environment summaries, and a manifest.
+- Keep policy profiles as review checklists and evidence helpers, not formal legal compliance certifications.
+- Preserve the review-first, manual-apply workflow.
+
 ## [0.5.0] - Unreleased
 
 v0.5.0 starts the low-risk internal architecture split while keeping the CLI behavior stable.

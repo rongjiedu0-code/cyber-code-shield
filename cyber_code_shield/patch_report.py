@@ -8,6 +8,7 @@ from .constants import (
     __version__,
 )
 from .hashing import collect_reviewed_file_hashes, hash_text_sha256
+from .policy_profiles import get_policy_profile_definition
 from .policy_warnings import format_policy_warnings
 from .serialization import format_json
 
@@ -41,7 +42,7 @@ def serialize_error_locations(error_locations, project_path):
     return serialized
 
 
-def build_patch_report_data(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, prompt_text=None, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True):
+def build_patch_report_data(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, prompt_text=None, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True, policy_profile="basic"):
     """构建补丁建议报告的结构化审计数据。"""
     task_titles = {
         "fix_error": "Fix Error",
@@ -53,6 +54,7 @@ def build_patch_report_data(task_type, project_path, model_config, selected_file
     reviewed_files = collect_reviewed_file_hashes(project_path, selected_files)
     generated_at = datetime.now().isoformat(timespec="seconds")
     task_title = task_titles.get(task_type, "Suggest Patch")
+    policy_definition = get_policy_profile_definition(policy_profile)
     return {
         "schema_version": "cyber-code-shield.patch-report.v1",
         "report_id": f"ccs-patch-{uuid.uuid4().hex}",
@@ -79,6 +81,14 @@ def build_patch_report_data(task_type, project_path, model_config, selected_file
             "max_generated_tokens": num_predict,
             "thinking_output_requested": False,
         },
+        "policy": {
+            "profile": policy_definition["profile"],
+            "label": policy_definition["label"],
+            "description": policy_definition["description"],
+            "rules_version": policy_definition["rules_version"],
+            "warnings_enabled": policy_warnings_enabled,
+            "disclaimer": policy_definition["disclaimer"],
+        },
         "audit": {
             "prompt_sha256": hash_text_sha256(prompt_text) if prompt_text is not None else None,
             "model_response_sha256": hash_text_sha256(model_response),
@@ -88,6 +98,7 @@ def build_patch_report_data(task_type, project_path, model_config, selected_file
             "response_warning_count": len(validation_warnings),
             "policy_warning_count": len(policy_warnings),
             "policy_scan_status": "enabled" if policy_warnings_enabled else "disabled",
+            "policy_profile": policy_definition["profile"],
             "reviewed_files": reviewed_files,
         },
         "user_request": user_request.strip(),
@@ -108,6 +119,7 @@ def render_patch_markdown(report):
     """把结构化补丁报告渲染成 Markdown。"""
     model = report["model"]
     audit = report["audit"]
+    policy = report.get("policy", get_policy_profile_definition("basic"))
     lines = [
         "# Cyber-Code-Shield Patch Suggestion",
         "",
@@ -128,6 +140,7 @@ def render_patch_markdown(report):
         f"- Timeout seconds: `{model['timeout_seconds']}`",
         f"- Max generated tokens: `{model['max_generated_tokens']}`",
         "- Thinking output requested: `no`",
+        f"- Policy profile: `{policy['profile']}`",
         f"- Prompt SHA-256: `{audit['prompt_sha256'] or 'unavailable'}`",
         f"- Model response SHA-256: `{audit['model_response_sha256']}`",
         "",
@@ -155,6 +168,9 @@ def render_patch_markdown(report):
         f"- Response warning count: `{audit['response_warning_count']}`",
         f"- Policy warning count: `{audit['policy_warning_count']}`",
         f"- Policy scan status: `{audit['policy_scan_status']}`",
+        f"- Policy profile: `{policy['profile']}`",
+        f"- Policy rules version: `{policy['rules_version']}`",
+        f"- Policy profile disclaimer: {policy['disclaimer']}",
         "",
         "## User request",
         "",
@@ -183,7 +199,15 @@ def render_patch_markdown(report):
     else:
         lines.append("- No project files were selected")
 
-    lines.extend(["", "## Policy warnings", ""])
+    lines.extend([
+        "",
+        "## Policy warnings",
+        "",
+        f"Policy profile: `{policy['profile']}` — {policy['label']}.",
+        "",
+        policy["disclaimer"],
+        "",
+    ])
     if report["policy_warnings_enabled"]:
         lines.extend(format_policy_warnings(report["policy_warnings"]))
     else:
@@ -210,7 +234,7 @@ def render_patch_report_by_format(report, patch_report_format):
     return render_patch_markdown(report)
 
 
-def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True, prompt_text=None):
+def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True, prompt_text=None, policy_profile="basic"):
     """把模型输出包装成补丁建议 Markdown。"""
     report = build_patch_report_data(
         task_type,
@@ -227,5 +251,6 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
         validation_warnings=validation_warnings,
         policy_warnings=policy_warnings,
         policy_warnings_enabled=policy_warnings_enabled,
+        policy_profile=policy_profile,
     )
     return render_patch_markdown(report)

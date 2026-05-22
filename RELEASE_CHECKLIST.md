@@ -143,7 +143,16 @@ Use this checklist before publishing the current public release. The v0.1 sectio
 - [ ] Project context collection responsibilities are identified.
 - [ ] Tests cover behavior before module extraction begins.
 
-## 13. Validation commands
+## 13. v0.6 Policy profile and report bundle readiness
+
+- [ ] README describes v0.6 as policy profiles plus report bundles, not an autonomous coding agent.
+- [ ] PROJECT_DIRECTION.md defines `basic`, `enterprise-strict`, `china-privacy`, and `supply-chain` profiles.
+- [ ] Policy profile wording avoids claiming formal legal compliance certification.
+- [ ] Report bundle manifest fields are defined before implementation begins.
+- [ ] Report bundle keeps source files manual-review-first and does not apply patches automatically.
+- [ ] Planned bundle artifacts include Markdown/JSON reports, reviewed-file hashes, policy warnings, validation warnings, environment summary, and manifest.
+
+## 14. Validation commands
 
 Run before release:
 

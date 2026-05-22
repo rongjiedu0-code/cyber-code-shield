@@ -1,3 +1,4 @@
+import argparse
 import hashlib
 import json
 import sys
@@ -154,6 +155,49 @@ class PolicyWarningsTest(unittest.TestCase):
         self.assertIn("SENSITIVE_AREA", self.warning_codes(warnings))
         self.assertEqual(self.warning_by_code(warnings, "SENSITIVE_AREA")["severity"], "review")
 
+    def test_enterprise_strict_escalates_review_warnings(self):
+        project_path, file_path = self.make_project_file("requirements.txt", "")
+        response = """```diff
+--- requirements.txt
++++ requirements.txt
+@@ -0,0 +1 @@
++requests==2.32.0
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path, policy_profile="enterprise-strict")
+        self.assertEqual(self.warning_by_code(warnings, "DEPENDENCY_CHANGE")["severity"], "high")
+        self.assertIn("ENTERPRISE_REVIEW_REQUIRED", self.warning_codes(warnings))
+
+    def test_china_privacy_profile_detects_privacy_and_cloud_signals(self):
+        project_path, file_path = self.make_project_file()
+        response = """```diff
+--- app.py
++++ app.py
+@@ -0,0 +1,3 @@
++logger.info(user.email)
++client = OpenAI()
++print("手机号", phone)
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path, policy_profile="china-privacy")
+        self.assertIn("PRIVACY_DATA_FLOW", self.warning_codes(warnings))
+        self.assertIn("LOGGING_OR_TELEMETRY", self.warning_codes(warnings))
+        self.assertIn("CLOUD_PROVIDER_OR_EGRESS", self.warning_codes(warnings))
+
+    def test_supply_chain_profile_detects_package_scripts(self):
+        project_path, file_path = self.make_project_file("package.json", "{}")
+        response = """```diff
+--- package.json
++++ package.json
+@@ -1 +1,5 @@
++{
++  "scripts": {
++    "postinstall": "node scripts/install.js"
++  }
++}
+```"""
+        warnings = ccs.detect_policy_warnings(response, [file_path], project_path, policy_profile="supply-chain")
+        self.assertEqual(self.warning_by_code(warnings, "DEPENDENCY_CHANGE")["severity"], "high")
+        self.assertIn("PACKAGE_SCRIPT_CHANGE", self.warning_codes(warnings))
+
     def test_rendered_report_includes_compliance_and_policy_sections(self):
         project_path, file_path = self.make_project_file()
         rendered = ccs.render_patch_suggestion(
@@ -178,6 +222,8 @@ class PolicyWarningsTest(unittest.TestCase):
         self.assertIn("sha256=", rendered)
         self.assertIn("Policy warning count: `1`", rendered)
         self.assertIn("Model tier: `deep`", rendered)
+        self.assertIn("Policy profile: `basic`", rendered)
+        self.assertIn("not formal compliance certifications", rendered)
 
     def test_rendered_report_records_disabled_policy_scan(self):
         project_path, file_path = self.make_project_file()
@@ -197,6 +243,23 @@ class PolicyWarningsTest(unittest.TestCase):
         )
         self.assertIn("Policy scan status: `disabled`", rendered)
         self.assertIn("Policy warning scan disabled by user", rendered)
+
+    def test_rendered_report_records_selected_policy_profile(self):
+        project_path, file_path = self.make_project_file()
+        rendered = ccs.render_patch_suggestion(
+            "suggest_patch",
+            project_path,
+            {"chat_model": "local", "api_base": "http://localhost:11434", "inference_provider": "ollama", "model_tier": "custom"},
+            [file_path],
+            "## Confidence\nHigh",
+            "Fix bug",
+            True,
+            180,
+            800,
+            policy_profile="enterprise-strict",
+        )
+        self.assertIn("Policy profile: `enterprise-strict`", rendered)
+        self.assertIn("Enterprise Strict", rendered)
 
 
 class PatchAuditReportTest(unittest.TestCase):
@@ -248,6 +311,26 @@ class PatchAuditReportTest(unittest.TestCase):
         self.assertEqual(report["audit"]["model_response_sha256"], ccs.hash_text_sha256("## Confidence\nHigh"))
         self.assertEqual(report["audit"]["reviewed_files"][0]["path"], "app.py")
         self.assertEqual(report["audit"]["policy_warning_count"], 1)
+        self.assertEqual(report["policy"]["profile"], "basic")
+        self.assertEqual(report["audit"]["policy_profile"], "basic")
+
+    def test_build_patch_report_data_records_selected_policy_profile(self):
+        project_path, file_path = self.make_project_file()
+        report = ccs.build_patch_report_data(
+            "suggest_patch",
+            project_path,
+            {"chat_model": "local", "api_base": "http://localhost:11434", "inference_provider": "ollama", "model_tier": "deep"},
+            [file_path],
+            "## Confidence\nHigh",
+            "Fix bug",
+            True,
+            180,
+            800,
+            policy_profile="supply-chain",
+        )
+        self.assertEqual(report["policy"]["profile"], "supply-chain")
+        self.assertEqual(report["audit"]["policy_profile"], "supply-chain")
+        self.assertIn("not formal compliance certifications", report["policy"]["disclaimer"])
 
     def test_render_patch_report_json_excludes_internal_prompt_text(self):
         project_path, file_path = self.make_project_file()
@@ -289,6 +372,95 @@ class PatchAuditReportTest(unittest.TestCase):
             "json",
         ])
         self.assertEqual(args.patch_report_format, "json")
+
+    def test_parser_accepts_policy_profile_and_report_bundle(self):
+        args = ccs.build_parser().parse_args([
+            "--suggest-patch",
+            "--project",
+            ".",
+            "--task",
+            "x",
+            "--policy-profile",
+            "enterprise-strict",
+            "--report-bundle",
+            "--bundle-output",
+            "bundle-dir",
+        ])
+        self.assertEqual(args.policy_profile, "enterprise-strict")
+        self.assertTrue(args.report_bundle)
+        self.assertEqual(args.bundle_output, "bundle-dir")
+
+    def test_parser_rejects_invalid_policy_profile(self):
+        with self.assertRaises(SystemExit):
+            ccs.build_parser().parse_args([
+                "--suggest-patch",
+                "--project",
+                ".",
+                "--task",
+                "x",
+                "--policy-profile",
+                "invalid",
+            ])
+
+
+class ReportBundleTest(unittest.TestCase):
+    def make_patch_report(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        project_path = Path(temp_dir.name)
+        file_path = project_path / "app.py"
+        file_path.write_text("secret = 'local-only'\n", encoding="utf-8")
+        self.addCleanup(temp_dir.cleanup)
+        report = ccs.build_patch_report_data(
+            "suggest_patch",
+            project_path,
+            {"chat_model": "local", "api_base": "http://localhost:11434", "inference_provider": "ollama", "model_tier": "custom"},
+            [file_path],
+            "## Confidence\nHigh",
+            "Fix bug",
+            True,
+            180,
+            800,
+            validation_warnings=["warn"],
+            policy_warnings=[ccs.make_policy_warning("NETWORK_CALL", "high", "Network call")],
+            policy_profile="enterprise-strict",
+        )
+        return project_path, report
+
+    def test_write_report_bundle_creates_expected_artifacts(self):
+        project_path, report = self.make_patch_report()
+        bundle_dir = project_path / "bundle"
+        environment_summary = {"schema_version": "cyber-code-shield.environment-summary.v1", "api_base_is_local": True}
+        manifest = ccs.write_report_bundle(bundle_dir, report, environment_summary)
+        expected_files = {
+            "report.md",
+            "report.json",
+            "reviewed-files.json",
+            "policy-warnings.json",
+            "validation-warnings.json",
+            "environment-summary.json",
+            "manifest.json",
+        }
+        self.assertEqual({path.name for path in bundle_dir.iterdir()}, expected_files)
+        self.assertFalse(manifest["source_files_modified_automatically"])
+        self.assertEqual(manifest["report_id"], report["report_id"])
+        self.assertEqual({artifact["path"] for artifact in manifest["artifacts"]}, expected_files - {"manifest.json"})
+        for artifact in manifest["artifacts"]:
+            text = (bundle_dir / artifact["path"]).read_text(encoding="utf-8")
+            self.assertEqual(artifact["sha256"], ccs.hash_text_sha256(text))
+        reviewed_files_text = (bundle_dir / "reviewed-files.json").read_text(encoding="utf-8")
+        self.assertIn("sha256", reviewed_files_text)
+        self.assertNotIn("local-only", reviewed_files_text)
+        policy_warnings = json.loads((bundle_dir / "policy-warnings.json").read_text(encoding="utf-8"))
+        self.assertEqual(policy_warnings["policy"]["profile"], "enterprise-strict")
+        validation_warnings = json.loads((bundle_dir / "validation-warnings.json").read_text(encoding="utf-8"))
+        self.assertEqual(validation_warnings["response_warning_count"], 1)
+
+    def test_write_report_bundle_rejects_existing_directory(self):
+        project_path, report = self.make_patch_report()
+        bundle_dir = project_path / "bundle"
+        bundle_dir.mkdir()
+        with self.assertRaises(FileExistsError):
+            ccs.write_report_bundle(bundle_dir, report, {"schema_version": "x"})
 
 
 class PatchResponseValidationTest(unittest.TestCase):

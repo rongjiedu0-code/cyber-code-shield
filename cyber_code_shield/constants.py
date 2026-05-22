@@ -1,4 +1,4 @@
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 DEFAULT_API_BASE = "http://localhost:11434"
 DEFAULT_INFERENCE_PROVIDER = "ollama"
 INFERENCE_PROVIDERS = ("ollama", "openai-compatible")
@@ -6,6 +6,9 @@ MODEL_TIERS = ("light", "deep", "custom")
 DEFAULT_MODEL_TIER = "custom"
 PATCH_REPORT_FORMATS = ("markdown", "json")
 POLICY_WARNING_SEVERITIES = ("info", "review", "high")
+POLICY_PROFILE_NAMES = ("basic", "enterprise-strict", "china-privacy", "supply-chain")
+DEFAULT_POLICY_PROFILE = "basic"
+REPORT_BUNDLE_PREFIX = "CYBER_CODE_SHIELD_BUNDLE"
 DEFAULT_PROFILE = "balanced"
 LOCAL_CHAT_TITLE = "Cyber-Code-Shield Local Chat"
 LOCAL_AUTOCOMPLETE_TITLE = "Cyber-Code-Shield Local Autocomplete"

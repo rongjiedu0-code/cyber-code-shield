@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from .constants import POLICY_WARNING_SEVERITIES
+from .constants import DEFAULT_POLICY_PROFILE, POLICY_WARNING_SEVERITIES
 from .patch_parsing import extract_diff_paths, get_added_diff_lines
+from .policy_profiles import apply_policy_profile
 
 
 def normalize_policy_severity(severity):
@@ -25,7 +26,7 @@ def path_contains_any(path_text, keywords):
     return any(keyword in lowered for keyword in keywords)
 
 
-def detect_policy_warnings(response_text, selected_files, project_path, error_locations=None):
+def detect_policy_warnings(response_text, selected_files, project_path, error_locations=None, policy_profile=DEFAULT_POLICY_PROFILE):
     """检测企业审查相关的非阻断 policy warning。"""
     warnings = []
     diff_paths = extract_diff_paths(response_text)
@@ -97,7 +98,7 @@ def detect_policy_warnings(response_text, selected_files, project_path, error_lo
             ", ".join(normalized_paths),
         ))
 
-    return warnings
+    return apply_policy_profile(warnings, normalized_paths, added_text, make_policy_warning, policy_profile)
 
 
 def format_policy_warnings(policy_warnings):
