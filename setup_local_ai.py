@@ -21,6 +21,7 @@ python setup_local_ai.py --chat-model qwen2.5-coder:14b --embedding-model nomic-
 """
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -29,6 +30,7 @@ import shutil
 import sys
 import urllib.error
 import urllib.request
+import uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -41,12 +43,14 @@ except AttributeError:
     pass
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 DEFAULT_API_BASE = "http://localhost:11434"
 DEFAULT_INFERENCE_PROVIDER = "ollama"
 INFERENCE_PROVIDERS = ("ollama", "openai-compatible")
 MODEL_TIERS = ("light", "deep", "custom")
 DEFAULT_MODEL_TIER = "custom"
+PATCH_REPORT_FORMATS = ("markdown", "json")
+POLICY_WARNING_SEVERITIES = ("info", "review", "high")
 DEFAULT_PROFILE = "balanced"
 LOCAL_CHAT_TITLE = "Cyber-Code-Shield Local Chat"
 LOCAL_AUTOCOMPLETE_TITLE = "Cyber-Code-Shield Local Autocomplete"
@@ -499,6 +503,39 @@ def get_required_models(model_config):
 def format_json(data):
     """统一 JSON 输出格式，确保写入文件和 dry-run 展示一致。"""
     return json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+
+
+def hash_text_sha256(text):
+    """计算精确 UTF-8 文本的 SHA-256。"""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def hash_file_sha256(path, chunk_size=1024 * 1024):
+    """流式计算文件 SHA-256 和大小。"""
+    digest = hashlib.sha256()
+    size_bytes = 0
+    with path.open("rb") as file_obj:
+        while True:
+            chunk = file_obj.read(chunk_size)
+            if not chunk:
+                break
+            size_bytes += len(chunk)
+            digest.update(chunk)
+    return {"sha256": digest.hexdigest(), "size_bytes": size_bytes}
+
+
+def collect_reviewed_file_hashes(project_path, selected_files):
+    """收集被审查文件的相对路径、hash 和大小，不输出文件内容。"""
+    reviewed_files = []
+    for file_path in selected_files:
+        relative_path = str(file_path.relative_to(project_path)).replace("\\", "/")
+        entry = {"path": relative_path}
+        try:
+            entry.update(hash_file_sha256(file_path))
+        except OSError as error:
+            entry.update({"sha256": None, "size_bytes": None, "read_error": str(error)})
+        reviewed_files.append(entry)
+    return reviewed_files
 
 
 def format_config_json(model_config):
@@ -1586,7 +1623,7 @@ TODO completion rules:
 - Do not invent additional validation examples unless they are trivial and you have checked them against every stated constraint.
 - Do not label an example valid if it violates a length, type, format, or allowed-character constraint.
 - The completed function should enforce its own documented constraints instead of relying on callers to pre-normalize or pre-validate input.
-- If a constraint says lowercase ASCII letters only, do not use broad checks that also accept uppercase or Unicode letters.
+- If a constraint says lowercase ASCII letters only, use an explicit ASCII range or equivalent strict check.
 - If you are unsure about edge cases, say what is uncertain instead of inventing examples.
 """ if task_type == "complete_todo" else ""
     return f"""You are Cyber-Code-Shield Local Patch Assistant.
@@ -1602,6 +1639,7 @@ Strict rules:
 - Do not invent files, APIs, tests, schemas, logs, or business rules to make a patch look complete.
 - Do not add dependencies unless the user explicitly asks for them.
 - Follow the existing project structure and style hints.
+- If a constraint says ASCII-only, do not use Unicode-wide helpers such as islower(), isalpha(), or isalnum() as the only character check.
 - If there is not enough context, write "No safe patch possible with the provided context." in "## Suggested patch" instead of guessing.
 {task_rules}
 {todo_rules}
@@ -1829,11 +1867,12 @@ def call_local_chat(model_config, prompt, timeout_seconds=PATCH_OLLAMA_TIMEOUT_S
     raise RuntimeError(f"不支持的本地推理 provider：{provider}")
 
 
-def get_default_patch_output_path(project_path, task_type):
+def get_default_patch_output_path(project_path, task_type, patch_report_format="markdown"):
     """生成默认补丁建议输出路径。"""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     task_name = task_type.upper()
-    return project_path / f"{PATCH_SUGGESTION_PREFIX}_{task_name}_{timestamp}.md"
+    extension = ".json" if patch_report_format == "json" else ".md"
+    return project_path / f"{PATCH_SUGGESTION_PREFIX}_{task_name}_{timestamp}{extension}"
 
 
 def extract_diff_paths(response):
@@ -1876,9 +1915,16 @@ def extract_effective_diff_changes(response):
     return removed, added
 
 
+def normalize_policy_severity(severity):
+    """把未知 severity 收敛到默认人工审查级别。"""
+    if severity in POLICY_WARNING_SEVERITIES:
+        return severity
+    return "review"
+
+
 def make_policy_warning(code, severity, message, evidence=None):
     """创建非阻断 policy warning。"""
-    warning = {"code": code, "severity": severity, "message": message}
+    warning = {"code": code, "severity": normalize_policy_severity(severity), "message": message}
     if evidence:
         warning["evidence"] = evidence
     return warning
@@ -1935,7 +1981,7 @@ def detect_policy_warnings(response_text, selected_files, project_path, error_lo
     if any(pattern in added_text for pattern in network_patterns):
         warnings.append(make_policy_warning(
             "NETWORK_CALL",
-            "review",
+            "high",
             "Patch appears to add network access; review data-flow and egress policy.",
         ))
 
@@ -1943,14 +1989,14 @@ def detect_policy_warnings(response_text, selected_files, project_path, error_lo
     if any(pattern in added_text for pattern in shell_patterns):
         warnings.append(make_policy_warning(
             "SHELL_EXECUTION",
-            "review",
+            "high",
             "Patch appears to add shell or dynamic code execution; review command-injection risk.",
         ))
 
     if any(path_contains_any(path, (".env", "secret", "credential", "token", "key", "cert")) for path in normalized_paths):
         warnings.append(make_policy_warning(
             "SECRET_OR_ENV_FILE",
-            "review",
+            "high",
             "Patch touches secret, credential, key, token, cert, or environment files; review sensitive-data handling.",
             ", ".join(normalized_paths),
         ))
@@ -1989,6 +2035,24 @@ def format_policy_warnings(policy_warnings):
     return lines
 
 
+def patch_text_has_added_placeholder(suggested_patch):
+    """判断补丁是否新增了明显占位内容。"""
+    for line in get_added_diff_lines(suggested_patch):
+        lowered = line.lower()
+        if "todo" in lowered or "placeholder" in lowered:
+            return True
+    return False
+
+
+def patch_text_uses_broad_unicode_character_checks(response_text, suggested_patch):
+    """判断补丁是否可能用宽松 Unicode 字符判断实现 ASCII-only 约束。"""
+    if "ascii" not in response_text.lower():
+        return False
+    lowered_patch = suggested_patch.lower()
+    broad_checks = (".islower(", ".isalpha(", ".isalnum(")
+    return any(check in lowered_patch for check in broad_checks)
+
+
 def validate_patch_response(response, selected_files, project_path, error_locations=None):
     """对本地模型输出做非阻断校验，提示用户人工复核风险。"""
     warnings = []
@@ -2008,8 +2072,10 @@ def validate_patch_response(response, selected_files, project_path, error_locati
     suggested_patch = extract_section_body(response, "Suggested patch")
     if not suggested_patch:
         warnings.append("模型输出的 Suggested patch 章节为空。")
-    elif "todo" in suggested_patch.lower() or "placeholder" in suggested_patch.lower():
-        warnings.append("Suggested patch 中可能包含占位内容，请人工确认。")
+    elif patch_text_has_added_placeholder(suggested_patch):
+        warnings.append("Suggested patch 中可能新增占位内容，请人工确认。")
+    if patch_text_uses_broad_unicode_character_checks(response, suggested_patch):
+        warnings.append("Suggested patch 可能用宽松 Unicode 字符判断实现 ASCII-only 约束，请人工确认。")
     removed_lines = []
     added_lines = []
     if suggested_patch and "```diff" in suggested_patch:
@@ -2045,17 +2111,94 @@ def validate_patch_response(response, selected_files, project_path, error_locati
     return warnings
 
 
-def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True):
-    """把模型输出包装成补丁建议 Markdown。"""
+def serialize_error_locations(error_locations, project_path):
+    """把内部错误位置转换为可序列化报告字段。"""
+    serialized = []
+    for location in error_locations or []:
+        entry = {
+            "relative_path": location.get("relative_path"),
+            "line": location.get("line"),
+            "column": location.get("column"),
+            "raw": location.get("raw"),
+            "kind": location.get("kind"),
+        }
+        file_path = location.get("file_path")
+        if file_path:
+            try:
+                entry["relative_path"] = str(file_path.relative_to(project_path)).replace("\\", "/")
+            except ValueError:
+                entry["relative_path"] = str(file_path)
+        serialized.append(entry)
+    return serialized
+
+
+def build_patch_report_data(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, prompt_text=None, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True):
+    """构建补丁建议报告的结构化审计数据。"""
     task_titles = {
         "fix_error": "Fix Error",
         "suggest_patch": "Suggest Patch",
         "complete_todo": "Complete TODO",
     }
-    task_title = task_titles.get(task_type, "Suggest Patch")
     validation_warnings = validation_warnings or []
     policy_warnings = policy_warnings or []
-    generated_at = datetime.now().isoformat(timespec='seconds')
+    reviewed_files = collect_reviewed_file_hashes(project_path, selected_files)
+    generated_at = datetime.now().isoformat(timespec="seconds")
+    task_title = task_titles.get(task_type, "Suggest Patch")
+    return {
+        "schema_version": "cyber-code-shield.patch-report.v1",
+        "report_id": f"ccs-patch-{uuid.uuid4().hex}",
+        "generated_at": generated_at,
+        "tool": {
+            "name": "Cyber-Code-Shield",
+            "version": __version__,
+        },
+        "task": {
+            "type": task_type,
+            "title": task_title,
+        },
+        "project": {
+            "path": str(project_path),
+        },
+        "model": {
+            "chat_model": model_config["chat_model"],
+            "model_tier": model_config.get("model_tier", DEFAULT_MODEL_TIER),
+            "inference_provider": model_config.get("inference_provider", DEFAULT_INFERENCE_PROVIDER),
+            "api_base": model_config["api_base"],
+            "context_mode": "lite" if context_lite else "full",
+            "context_lite": context_lite,
+            "timeout_seconds": patch_timeout,
+            "max_generated_tokens": num_predict,
+            "thinking_output_requested": False,
+        },
+        "audit": {
+            "prompt_sha256": hash_text_sha256(prompt_text) if prompt_text is not None else None,
+            "model_response_sha256": hash_text_sha256(model_response),
+            "source_files_modified_automatically": False,
+            "files_reviewed_count": len(selected_files),
+            "detected_error_locations_count": len(error_locations or []),
+            "response_warning_count": len(validation_warnings),
+            "policy_warning_count": len(policy_warnings),
+            "policy_scan_status": "enabled" if policy_warnings_enabled else "disabled",
+            "reviewed_files": reviewed_files,
+        },
+        "user_request": user_request.strip(),
+        "error_locations": serialize_error_locations(error_locations or [], project_path),
+        "policy_warnings_enabled": policy_warnings_enabled,
+        "policy_warnings": policy_warnings,
+        "response_warnings": validation_warnings,
+        "safety_notes": [
+            "This is a patch suggestion, not an applied change.",
+            "Review the diff and validation suggestions before editing source files.",
+            "The output depends on the selected local model and provided context.",
+        ],
+        "model_response": model_response.strip(),
+    }
+
+
+def render_patch_markdown(report):
+    """把结构化补丁报告渲染成 Markdown。"""
+    model = report["model"]
+    audit = report["audit"]
     lines = [
         "# Cyber-Code-Shield Patch Suggestion",
         "",
@@ -2064,106 +2207,126 @@ def render_patch_suggestion(task_type, project_path, model_config, selected_file
         "",
         "## Metadata",
         "",
-        f"- Task type: {task_title}",
-        f"- Project path: `{project_path}`",
-        f"- Generated at: `{generated_at}`",
-        f"- Model: `{model_config['chat_model']}`",
-        f"- Model tier: `{model_config.get('model_tier', DEFAULT_MODEL_TIER)}`",
-        f"- Inference provider: `{model_config.get('inference_provider', DEFAULT_INFERENCE_PROVIDER)}`",
-        f"- API base: `{model_config['api_base']}`",
-        f"- Context lite: `{'yes' if context_lite else 'no'}`",
-        f"- Timeout seconds: `{patch_timeout}`",
-        f"- Max generated tokens: `{num_predict}`",
+        f"- Report ID: `{report['report_id']}`",
+        f"- Task type: {report['task']['title']}",
+        f"- Project path: `{report['project']['path']}`",
+        f"- Generated at: `{report['generated_at']}`",
+        f"- Model: `{model['chat_model']}`",
+        f"- Model tier: `{model['model_tier']}`",
+        f"- Inference provider: `{model['inference_provider']}`",
+        f"- API base: `{model['api_base']}`",
+        f"- Context lite: `{'yes' if model['context_lite'] else 'no'}`",
+        f"- Timeout seconds: `{model['timeout_seconds']}`",
+        f"- Max generated tokens: `{model['max_generated_tokens']}`",
         "- Thinking output requested: `no`",
+        f"- Prompt SHA-256: `{audit['prompt_sha256'] or 'unavailable'}`",
+        f"- Model response SHA-256: `{audit['model_response_sha256']}`",
         "",
         "## Compliance evidence",
         "",
-        f"- Tool version: `{__version__}`",
-        f"- Task type: `{task_title}`",
-        f"- Generated at: `{generated_at}`",
-        f"- Inference provider: `{model_config.get('inference_provider', DEFAULT_INFERENCE_PROVIDER)}`",
-        f"- Model: `{model_config['chat_model']}`",
-        f"- Model tier: `{model_config.get('model_tier', DEFAULT_MODEL_TIER)}`",
-        f"- API base: `{model_config['api_base']}`",
-        f"- Context mode: `{'lite' if context_lite else 'full'}`",
-        f"- Timeout seconds: `{patch_timeout}`",
-        f"- Max generated tokens: `{num_predict}`",
+        f"- Report ID: `{report['report_id']}`",
+        f"- Schema version: `{report['schema_version']}`",
+        f"- Tool version: `{report['tool']['version']}`",
+        f"- Task type: `{report['task']['title']}`",
+        f"- Generated at: `{report['generated_at']}`",
+        f"- Inference provider: `{model['inference_provider']}`",
+        f"- Model: `{model['chat_model']}`",
+        f"- Model tier: `{model['model_tier']}`",
+        f"- API base: `{model['api_base']}`",
+        f"- Context mode: `{model['context_mode']}`",
+        f"- Timeout seconds: `{model['timeout_seconds']}`",
+        f"- Max generated tokens: `{model['max_generated_tokens']}`",
         "- Thinking output requested: `no`",
         "- Source files modified automatically: `no`",
-        f"- Files reviewed count: `{len(selected_files)}`",
-        f"- Detected error locations count: `{len(error_locations or [])}`",
-        f"- Response warning count: `{len(validation_warnings)}`",
-        f"- Policy warning count: `{len(policy_warnings)}`",
-        f"- Policy scan status: `{'enabled' if policy_warnings_enabled else 'disabled'}`",
+        f"- Prompt SHA-256: `{audit['prompt_sha256'] or 'unavailable'}`",
+        f"- Model response SHA-256: `{audit['model_response_sha256']}`",
+        f"- Reviewed file hash count: `{len(audit['reviewed_files'])}`",
+        f"- Files reviewed count: `{audit['files_reviewed_count']}`",
+        f"- Detected error locations count: `{audit['detected_error_locations_count']}`",
+        f"- Response warning count: `{audit['response_warning_count']}`",
+        f"- Policy warning count: `{audit['policy_warning_count']}`",
+        f"- Policy scan status: `{audit['policy_scan_status']}`",
         "",
         "## User request",
         "",
-        user_request.strip(),
+        report["user_request"],
         "",
     ]
 
-    if error_locations:
-        lines.extend([
-            "## Detected error locations",
-            "",
-            render_error_location_list(error_locations),
-            "",
-        ])
+    if report["error_locations"]:
+        lines.extend(["## Detected error locations", ""])
+        for location in report["error_locations"]:
+            suffix = ""
+            if location.get("line"):
+                suffix += f":{location['line']}"
+            if location.get("column"):
+                suffix += f":{location['column']}"
+            lines.append(f"- `{location['relative_path']}{suffix}` — {location['kind']}")
+        lines.append("")
 
-    lines.extend([
-        "## Files reviewed",
-        "",
-    ])
-
-    if selected_files:
-        for file_path in selected_files:
-            lines.append(f"- `{file_path.relative_to(project_path)}`")
+    lines.extend(["## Files reviewed", ""])
+    if audit["reviewed_files"]:
+        for reviewed_file in audit["reviewed_files"]:
+            if reviewed_file.get("sha256"):
+                lines.append(f"- `{reviewed_file['path']}` sha256=`{reviewed_file['sha256']}` size_bytes=`{reviewed_file['size_bytes']}`")
+            else:
+                lines.append(f"- `{reviewed_file['path']}` sha256=`unavailable` read_error=`{reviewed_file.get('read_error', 'unknown')}`")
     else:
         lines.append("- No project files were selected")
 
-    lines.extend([
-        "",
-        "## Policy warnings",
-        "",
-    ])
-    if policy_warnings_enabled:
-        lines.extend(format_policy_warnings(policy_warnings))
+    lines.extend(["", "## Policy warnings", ""])
+    if report["policy_warnings_enabled"]:
+        lines.extend(format_policy_warnings(report["policy_warnings"]))
     else:
         lines.append("- Policy warning scan disabled by user.")
     lines.append("")
 
-    if validation_warnings:
-        lines.extend([
-            "## Response warnings",
-            "",
-        ])
-        for warning in validation_warnings:
+    if report["response_warnings"]:
+        lines.extend(["## Response warnings", ""])
+        for warning in report["response_warnings"]:
             lines.append(f"- {warning}")
         lines.append("")
 
-    lines.extend([
-        "## Safety notes",
-        "",
-        "- This is a patch suggestion, not an applied change.",
-        "- Review the diff and validation suggestions before editing source files.",
-        "- The output depends on the selected local model and provided context.",
-        "",
-    ])
-
-    lines.extend([
-        "## Model response",
-        "",
-        model_response.strip(),
-        "",
-    ])
+    lines.extend(["## Safety notes", ""])
+    for note in report["safety_notes"]:
+        lines.append(f"- {note}")
+    lines.extend(["", "## Model response", "", report["model_response"], ""])
     return "\n".join(lines)
 
 
-def resolve_patch_output_path(project_path, output_arg, task_type):
+def render_patch_report_by_format(report, patch_report_format):
+    """按用户选择输出补丁建议报告。"""
+    if patch_report_format == "json":
+        return format_json(report)
+    return render_patch_markdown(report)
+
+
+def render_patch_suggestion(task_type, project_path, model_config, selected_files, model_response, user_request, context_lite, patch_timeout, num_predict, error_locations=None, validation_warnings=None, policy_warnings=None, policy_warnings_enabled=True, prompt_text=None):
+    """把模型输出包装成补丁建议 Markdown。"""
+    report = build_patch_report_data(
+        task_type,
+        project_path,
+        model_config,
+        selected_files,
+        model_response,
+        user_request,
+        context_lite,
+        patch_timeout,
+        num_predict,
+        prompt_text=prompt_text,
+        error_locations=error_locations,
+        validation_warnings=validation_warnings,
+        policy_warnings=policy_warnings,
+        policy_warnings_enabled=policy_warnings_enabled,
+    )
+    return render_patch_markdown(report)
+
+
+def resolve_patch_output_path(project_path, output_arg, task_type, patch_report_format="markdown"):
     """解析补丁建议输出路径。"""
     if output_arg:
         return Path(output_arg).expanduser().resolve()
-    return get_default_patch_output_path(project_path, task_type)
+    return get_default_patch_output_path(project_path, task_type, patch_report_format)
 
 
 def preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=None):
@@ -2184,7 +2347,7 @@ def preview_patch_prompt(project_path, output_path, selected_files, prompt, erro
     print(prompt)
 
 
-def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, error_locations=None, policy_warnings_enabled=True):
+def run_patch_assistant(model_config, task_type, project_arg, user_request, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", error_locations=None, policy_warnings_enabled=True):
     """运行本地补丁助手通用流程。"""
     if not project_arg:
         print("补丁助手命令需要指定 --project。")
@@ -2214,7 +2377,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         focus_lines_by_file=focus_lines_by_file,
     )
     prompt = build_patch_prompt(task_type, project_context_markdown, user_request, file_snippets)
-    output_path = resolve_patch_output_path(project_path, patch_output_arg, task_type)
+    output_path = resolve_patch_output_path(project_path, patch_output_arg, task_type, patch_report_format)
 
     if dry_run:
         preview_patch_prompt(project_path, output_path, selected_files, prompt, error_locations=error_locations)
@@ -2229,7 +2392,7 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
 
     validation_warnings = validate_patch_response(model_response, selected_files, project_path, error_locations=error_locations)
     policy_warnings = detect_policy_warnings(model_response, selected_files, project_path, error_locations=error_locations) if policy_warnings_enabled else []
-    rendered_suggestion = render_patch_suggestion(
+    patch_report = build_patch_report_data(
         task_type,
         project_path,
         model_config,
@@ -2239,19 +2402,21 @@ def run_patch_assistant(model_config, task_type, project_arg, user_request, file
         context_lite,
         patch_timeout,
         num_predict,
+        prompt_text=prompt,
         error_locations=error_locations,
         validation_warnings=validation_warnings,
         policy_warnings=policy_warnings,
         policy_warnings_enabled=policy_warnings_enabled,
     )
+    rendered_suggestion = render_patch_report_by_format(patch_report, patch_report_format)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_suggestion, encoding="utf-8")
-    print(f"已生成本地补丁建议：{output_path}")
+    print(f"已生成本地补丁建议报告：{output_path}")
     print("未自动修改任何源码文件，请人工审查后再应用建议。")
     return 0
 
 
-def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
+def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
     """根据错误日志生成本地修复建议。"""
     if bool(error_log_arg) == bool(error_text_arg):
         print("--fix-error 需要且只能指定 --error-log 或 --error-text 其中一个。")
@@ -2326,12 +2491,13 @@ def run_fix_error(model_config, project_arg, error_log_arg, error_text_arg, file
         dry_run,
         patch_timeout,
         context_lite,
+        patch_report_format,
         error_locations=error_locations,
         policy_warnings_enabled=policy_warnings_enabled,
     )
 
 
-def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
+def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
     """根据用户任务描述生成本地补丁建议。"""
     if not task_arg:
         print("--suggest-patch 需要指定 --task。")
@@ -2347,11 +2513,12 @@ def run_suggest_patch(model_config, project_arg, task_arg, files_arg, patch_outp
         dry_run,
         patch_timeout,
         context_lite,
+        patch_report_format,
         policy_warnings_enabled=policy_warnings_enabled,
     )
 
 
-def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, policy_warnings_enabled=True):
+def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_output_arg, dry_run, patch_timeout, context_lite, patch_report_format="markdown", policy_warnings_enabled=True):
     """根据选中文件中的 TODO/未实现标记生成补全建议。"""
     if not project_arg:
         print("--complete-todo 需要指定 --project。")
@@ -2395,6 +2562,7 @@ def run_complete_todo(model_config, project_arg, task_arg, files_arg, patch_outp
         dry_run,
         patch_timeout,
         context_lite,
+        patch_report_format,
         policy_warnings_enabled=policy_warnings_enabled,
     )
 
@@ -2694,7 +2862,13 @@ def build_parser():
     parser.add_argument("--error-text", help="直接传入错误文本，用于 --fix-error")
     parser.add_argument("--task", help="补丁任务描述，用于 --suggest-patch；也可作为 --complete-todo 的额外指导")
     parser.add_argument("--files", nargs="+", help="限定提供给本地模型参考的项目文件；指定得越准，补丁建议越稳定")
-    parser.add_argument("--patch-output", help="指定补丁建议 Markdown 输出路径")
+    parser.add_argument("--patch-output", help="指定补丁建议报告输出路径，默认根据 --patch-report-format 使用 .md 或 .json")
+    parser.add_argument(
+        "--patch-report-format",
+        choices=PATCH_REPORT_FORMATS,
+        default="markdown",
+        help="选择补丁建议报告格式，默认 markdown；json 用于机器可读审计记录",
+    )
     parser.add_argument(
         "--patch-timeout",
         type=int,
@@ -2760,6 +2934,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
         )
 
@@ -2773,6 +2948,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
         )
 
@@ -2786,6 +2962,7 @@ def main():
             args.dry_run,
             args.patch_timeout,
             args.context_lite,
+            args.patch_report_format,
             policy_warnings_enabled=not args.no_policy_warnings,
         )
 

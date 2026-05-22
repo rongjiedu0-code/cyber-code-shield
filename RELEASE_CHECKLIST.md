@@ -1,8 +1,8 @@
 # Cyber-Code-Shield Release Checklist
 
-Current target: v0.3.0 compliance-ready patch report.
+Current target: v0.4.0 audit-hardened patch reports.
 
-Use this checklist before publishing the current public release. The v0.1 sections are baseline setup-kit checks, the v0.2 section covers the Local Patch Assistant MVP, and the v0.3 section covers compliance-ready patch reports and policy warnings.
+Use this checklist before publishing the current public release. The v0.1 sections are baseline setup-kit checks, the v0.2 section covers the Local Patch Assistant MVP, v0.3 covers compliance-ready patch reports and policy warnings, and v0.4 covers audit trail hardening and JSON patch reports.
 
 ## 1. Product positioning
 
@@ -108,7 +108,20 @@ Use this checklist before publishing the current public release. The v0.1 sectio
 - [ ] Policy warnings detect sensitive auth/crypto/billing/user-data paths.
 - [ ] Policy warnings are advisory and do not block report generation.
 
-## 10. Validation commands
+## 10. v0.4.0 Audit-hardened patch reports
+
+- [ ] Generated patch reports include a `Report ID`.
+- [ ] Generated patch reports include prompt SHA-256 and model response SHA-256 fingerprints.
+- [ ] Generated patch reports include reviewed file SHA-256 hashes and byte sizes.
+- [ ] `--patch-report-format {markdown,json}` appears in help.
+- [ ] `--patch-report-format json` uses `.json` default patch report filenames.
+- [ ] JSON patch reports are machine-readable and include structured metadata, audit fields, warnings, and model response.
+- [ ] JSON patch reports do not include the full internal prompt text.
+- [ ] Policy warnings include differentiated severities.
+- [ ] Hash documentation clearly says fingerprints are not encryption or anonymization.
+- [ ] Patch assistant commands still do not modify business source files or apply patches automatically.
+
+## 11. Validation commands
 
 Run before release:
 
@@ -133,6 +146,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Test timeout option
 python setup_local_ai.py --suggest-patch --project . --task "Test lite context" --files README.md --chat-model gemma4-local --context-lite --patch-timeout 600 --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test OpenAI-compatible local provider" --files README.md --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model local-model --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test model tier metadata" --files README.md --model-tier deep --dry-run
+python setup_local_ai.py --suggest-patch --project . --task "Test JSON patch report format" --files README.md --patch-report-format json --dry-run
 python setup_local_ai.py --suggest-patch --project . --task "Test disabled policy warnings" --files README.md --no-policy-warnings --dry-run
 python -m unittest discover -s tests
 ```
@@ -149,19 +163,19 @@ python setup_local_ai.py --complete-todo --project . --files tmp_complete_todo_s
 rm -f tmp_complete_todo_sample.py
 ```
 
-## 11. Release packaging
+## 12. Release packaging
 
 - [ ] Remove local generated files before publishing.
 - [ ] Confirm `.gitignore` excludes generated context/report/patch files.
 - [ ] Confirm no `CYBER_CODE_SHIELD_*` generated files remain in the project root.
-- [ ] Confirm README has v0.3 demo commands and patch-report guidance.
+- [ ] Confirm README has v0.4 demo commands and patch-report guidance.
 - [ ] Confirm `LICENSE` is Apache-2.0.
-- [ ] Tag release as `v0.3.0` after final validation.
+- [ ] Tag release as `v0.4.0` after final validation.
 - [ ] Include known limitations in release notes.
 
-## 12. Known limitations for v0.3.0
+## 13. Known limitations for v0.4.0
 
-- Patch suggestions are Markdown suggestions only; there is no automatic apply mode.
+- Patch suggestions are Markdown or JSON reports only; there is no automatic apply mode.
 - The tool is not a full autonomous local Claude Code agent.
 - `--complete-todo` requires explicit `--files` in the MVP.
 - Context selection is heuristic and intentionally capped.

@@ -55,7 +55,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## 当前状态
 
-当前项目是早期 v0.2 MVP。
+当前项目是早期 v0.4 MVP，重点是本地优先、人工审查优先的补丁建议，以及更适合审计留痕的报告。
 
 | 能力 | 状态 | 命令 | 是否写源码 |
 | --- | --- | --- | --- |
@@ -69,13 +69,13 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 | 自动应用补丁 | 未包含 | N/A | N/A |
 | 完整本地 Claude Code Agent | 未包含 | N/A | N/A |
 
-> **注意：** 补丁助手只生成 Markdown 建议文件，不会自动修改源码。请审查建议后手动应用。
+> **注意：** 补丁助手只生成 Markdown 或 JSON 建议报告，不会自动修改源码。请审查建议后手动应用。
 
 后续计划：
 
 - 根据相似模块生成同风格补丁
 - 更精准的上下文选择和代码片段裁剪
-- 企业部署和合规说明材料
+- 更完整的企业部署和合规说明材料
 - 更详细的框架/工具识别
 - 桌面安装器原型
 
@@ -364,22 +364,24 @@ CYBER_CODE_SHIELD_PATCH_SUGGEST_PATCH_YYYYMMDD-HHMMSS.md
 CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 ```
 
+选择 `--patch-report-format json` 时，机器可读 JSON 补丁报告使用同样命名模式，但扩展名为 `.json`。
+
 安全行为：
 
 - 补丁助手只允许使用 `localhost`、`127.0.0.1` 等本机 API。
 - Ollama 仍是默认 provider；OpenAI-compatible 模式面向本地 LM Studio、llama.cpp server 和 vLLM 端点，不面向云端 API。
 - 它只读取受限的项目摘要和代码片段。
-- 它只写入 Markdown 建议文件。
+- 它只写入生成的补丁建议报告。
 - 它不会自动修改业务源码，也不会自动应用 patch。
-- 生成文件会记录原始请求、模型、超时、上下文模式，并默认不请求 thinking 输出。
+- 生成报告会记录原始请求、模型、超时、上下文模式、report ID、prompt SHA-256、模型响应 SHA-256、已审查文件 hash，并默认不请求 thinking 输出。
 
 生成建议里的质量护栏：
 
-- `Compliance evidence` 会记录工具版本、provider、模型、模型档位、上下文模式、warning 数量，以及源码不会被自动修改这一事实。
+- `Compliance evidence` 会记录 report ID、schema version、工具版本、provider、模型、模型档位、上下文模式、prompt/模型响应 hash、已审查文件 hash、warning 数量，以及源码不会被自动修改这一事实。
 - `Confidence` 应该是 `High`、`Medium` 或 `Low`。如果是 `Low`，建议先补上下文，不要直接应用 diff。
 - `Missing context` 会列出本地模型还需要的文件、日志、测试、schema 或业务规则。可以优先用 `--files` 补充这些文件。
 - 如果出现 `Response warnings`，它们是非阻断提示，用来标记缺少章节、无效 no-op diff、引用未提供上下文的文件，或 `--fix-error` 没有触及主故障行等可疑输出。
-- `Policy warnings` 是非阻断的企业审查信号，用来提示依赖变更、网络调用、shell 执行、secret/env 文件、CI/CD 改动，或 auth/crypto/billing/user-data 等敏感区域。
+- `Policy warnings` 是带 severity 的非阻断企业审查信号，用来提示依赖变更、网络调用、shell 执行、secret/env 文件、CI/CD 改动，或 auth/crypto/billing/user-data 等敏感区域。
 - `Risks or assumptions` 是人工审查重点，复制任何建议代码前都应该先看这里。
 - 本地模型仍可能犯错，生成文件只是可审查建议，不是自主 agent 的最终修改结果。
 - 按任务风险匹配模型规模：轻量模型适合快速试用，26B/31B 级模型更适合深度合规和补丁生成工作。
@@ -390,9 +392,14 @@ CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 # 在生成报告中记录部署档位元数据；不会自动切换模型。
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --model-tier deep --chat-model gemma4-local:latest
 
+# 生成包含同一套审计元数据的机器可读 JSON 补丁报告。
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --patch-report-format json
+
 # 特殊流程中禁用 policy warning 扫描。
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --no-policy-warnings
 ```
+
+补丁报告中的 hash 是用于复核和完整性检查的审计 fingerprint，不是加密或匿名化。JSON 补丁报告不会包含完整内部 prompt，但会包含 user request 和 model response，因为它们是审查工件本身的一部分。
 
 ## 高质量任务写法指南
 
@@ -546,7 +553,7 @@ python setup_local_ai.py --suggest-patch --project . --task "add input validatio
 
 ## 已知限制
 
-- 补丁建议只是 Markdown 建议，不会自动应用。
+- 补丁建议只是 Markdown 或 JSON 报告，不会自动应用。
 - Cyber-Code-Shield 不是完整的本地 Claude Code 或 Cursor 替代品。
 - 暂无自主多步 agent 循环，也不会自动运行测试。
 - 本地模型输出质量取决于模型能力和提供的上下文。

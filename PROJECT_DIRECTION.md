@@ -357,21 +357,21 @@ cyber-code-shield/
 - 更强的相关文件选择和上下文裁剪，避免把整个项目塞给本地模型
 - 生成 patch 后由用户确认再写入
 
-### v0.4 企业友好
+### v0.4 审计友好补丁报告
 
-目标：更像企业部署包，同时服务本地补丁助手落地。
+目标：把本地补丁助手生成的报告升级成更适合企业复核和留痕的证据工件。
 
-当前已支持轻量版 `--report`。
+当前已支持轻量版 `--report` 和合规版 patch Markdown 报告。
 
 增加：
 
-- 离线部署说明
-- 安全检查清单
-- 管理员安装指南
-- 常见问题排查
-- 内网环境模型准备说明
-- 给安全/合规团队看的“数据不出本机”解释材料
-- 本地补丁生成的审查、备份和回滚说明
+- Patch report ID
+- Prompt SHA-256 和模型响应 SHA-256
+- 已审查文件 SHA-256 和字节大小
+- 机器可读 JSON patch report
+- Policy warning severity levels
+- 更完整的 report/policy 边界测试
+- 明确说明 hash 是审计 fingerprint，不是加密或匿名化
 
 ### v0.5 桌面安装器
 
@@ -393,8 +393,8 @@ cyber-code-shield/
 
 下一步优先做这几件事：
 
-1. 打磨 README 第一屏、能力表和 demo 命令，让陌生用户能快速理解 v0.2 MVP。
-2. 准备 v0.2 release notes，明确当前能力和已知限制。
+1. 打磨 v0.4 audit-hardened patch report，确保 Markdown/JSON 报告都包含稳定 ID、hash 和 severity。
+2. 准备 v0.4 release notes，明确当前能力、审计边界和已知限制。
 3. 按 `RELEASE_CHECKLIST.md` 跑一遍非破坏性验证命令，确认没有生成产物残留。
 4. 继续优化上下文选择和 snippet 裁剪，让本地模型输入更聚焦。
 5. 后续再考虑 `add-similar`、企业部署材料、YAML merge 增强和桌面安装器。

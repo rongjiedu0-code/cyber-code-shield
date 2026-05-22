@@ -2,6 +2,24 @@
 
 All notable changes to Cyber-Code-Shield will be documented in this file.
 
+## [0.4.0] - Unreleased
+
+v0.4 hardens Local Patch Assistant reports as audit-friendly review artifacts while keeping the workflow local-first and manual-review-first.
+
+### Added
+
+- Added stable patch report IDs for generated patch suggestion reports.
+- Added SHA-256 audit fingerprints for the internal prompt, model response, and reviewed project files.
+- Added optional machine-readable JSON patch report output via `--patch-report-format json`.
+- Added differentiated policy warning severities for higher-risk network, shell execution, and secret/env-file changes.
+- Added unit tests for audit hashes, structured patch report data, JSON patch report rendering, policy severities, and parser support.
+
+### Safety
+
+- Patch report hashes are audit fingerprints, not encryption or anonymization.
+- JSON patch reports do not include the full internal prompt, but they do include the user request and model response as review evidence.
+- Patch assistant commands still do not apply patches or modify source files automatically.
+
 ## [0.3.0] - Unreleased
 
 v0.3 strengthens the Local Patch Assistant with compliance-ready Markdown evidence and non-blocking policy warnings for enterprise review.

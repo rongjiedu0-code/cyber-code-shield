@@ -55,7 +55,7 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 
 ## Current status
 
-This project is an early v0.2 MVP.
+This project is an early v0.4 MVP focused on local-first, review-first patch suggestions with audit-hardened reports.
 
 | Capability | Status | Command | Source writes |
 | --- | --- | --- | --- |
@@ -69,13 +69,13 @@ This project is an early v0.2 MVP.
 | Auto-apply patch | Not included | N/A | N/A |
 | Full local Claude Code agent | Not included | N/A | N/A |
 
-> **Note:** Patch suggestions are not applied automatically. Review the generated Markdown file and apply any changes manually.
+> **Note:** Patch suggestions are not applied automatically. Review the generated Markdown or JSON report and apply any changes manually.
 
 Planned next:
 
 - Similar-module patch generation that follows the current codebase style
 - More precise context selection and snippet trimming
-- Enterprise deployment and compliance documentation
+- Stronger enterprise deployment and compliance documentation
 - More detailed framework/style detection
 - Desktop installer prototype
 
@@ -374,25 +374,27 @@ CYBER_CODE_SHIELD_PATCH_SUGGEST_PATCH_YYYYMMDD-HHMMSS.md
 CYBER_CODE_SHIELD_PATCH_COMPLETE_TODO_YYYYMMDD-HHMMSS.md
 ```
 
+Machine-readable JSON patch reports use the same naming pattern with `.json` when `--patch-report-format json` is selected.
+
 Safety behavior:
 
 - Patch assistant commands only allow local API bases such as `localhost` or `127.0.0.1`.
 - Ollama remains the default; OpenAI-compatible mode is intended for local LM Studio, llama.cpp server, and vLLM endpoints, not cloud APIs.
 - They read a limited project summary and capped file snippets.
-- They write only a generated Markdown suggestion file.
+- They write only a generated patch suggestion report.
 - They do not modify business source files or apply patches automatically.
 - Review the suggested diff before making any source change.
 - Use `--patch-timeout` for large models that need longer first-load or generation time.
 - Use `--context-lite` to reduce project context, file snippets, and generated length for faster local validation.
-- Patch suggestion files include the original request, selected model, timeout, context mode, and note that thinking output is not requested.
+- Patch suggestion reports include the original request, selected model, timeout, context mode, report ID, prompt SHA-256, model response SHA-256, reviewed file hashes, and note that thinking output is not requested.
 
 Quality guardrails in generated suggestions:
 
-- `Compliance evidence` records tool version, provider, model, model tier, context mode, warning counts, and the fact that source files were not modified automatically.
+- `Compliance evidence` records report ID, schema version, tool version, provider, model, model tier, context mode, prompt/model-response hashes, reviewed file hashes, warning counts, and the fact that source files were not modified automatically.
 - `Confidence` should be `High`, `Medium`, or `Low`. Treat `Low` as a signal to provide more context before applying any diff.
 - `Missing context` lists files, logs, tests, schemas, or business rules the local model still needs. Add those with `--files` when possible.
 - `Response warnings`, when present, are non-blocking checks for suspicious model output such as missing sections, no-op diffs, paths outside the provided context, or a `--fix-error` patch that does not touch the primary error line.
-- `Policy warnings` are non-blocking enterprise review signals for dependency changes, network calls, shell execution, secret/env files, CI/CD changes, or sensitive auth/crypto/billing/user-data areas.
+- `Policy warnings` are non-blocking enterprise review signals with severity levels for dependency changes, network calls, shell execution, secret/env files, CI/CD changes, or sensitive auth/crypto/billing/user-data areas.
 - `Risks or assumptions` is the review checklist. Read it before copying any suggested code.
 - Local models may still make mistakes. The generated file is a reviewable suggestion, not an autonomous agent result.
 - Match model size to task risk: lightweight models are good for quick trials, while 26B/31B-class models are better suited to deeper compliance and patch-generation work.
@@ -403,9 +405,14 @@ Patch report options:
 # Record deployment tier metadata in the generated report; this does not switch models automatically.
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --model-tier deep --chat-model gemma4-local:latest
 
+# Generate a machine-readable JSON patch report with the same audit metadata.
+python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --patch-report-format json
+
 # Disable policy warning scanning for a special workflow.
 python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix bug" --no-policy-warnings
 ```
+
+Patch report hashes are audit fingerprints for review and integrity checks; they are not encryption or anonymization. The JSON patch report does not include the full internal prompt, but it does include the user request and model response because those are part of the review artifact.
 
 ## Writing good local-model tasks
 
@@ -559,7 +566,7 @@ The intended behavior is to produce explanations and reviewable diffs first. Wri
 
 ## Known limitations
 
-- Patch suggestions are Markdown suggestions only; they are not applied automatically.
+- Patch suggestions are Markdown or JSON reports only; they are not applied automatically.
 - Cyber-Code-Shield is not a full local Claude Code or Cursor replacement.
 - There is no autonomous multi-step agent loop or automatic test execution yet.
 - Local model output quality depends on the selected model and available context.
