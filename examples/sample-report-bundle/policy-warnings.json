@@ -1,0 +1,28 @@
+{
+  "schema_version": "cyber-code-shield.policy-warnings.v1",
+  "report_id": "ccs-patch-sample-v06000000000000000000000000000000",
+  "generated_at": "2026-05-22T16:00:00",
+  "policy": {
+    "profile": "enterprise-strict",
+    "label": "Enterprise Strict",
+    "description": "Stricter review profile for enterprise-controlled code changes.",
+    "rules_version": "cyber-code-shield.policy-profiles.v1",
+    "warnings_enabled": true,
+    "disclaimer": "Policy profiles are review and evidence helpers, not formal compliance certifications."
+  },
+  "policy_warnings_enabled": true,
+  "policy_warning_count": 2,
+  "policy_warnings": [
+    {
+      "code": "ENTERPRISE_REVIEW_REQUIRED",
+      "severity": "review",
+      "message": "Enterprise strict profile selected; route this AI-assisted change through the configured human review process."
+    },
+    {
+      "code": "SENSITIVE_AREA",
+      "severity": "review",
+      "message": "Patch touches user-data validation logic; review behavior and test coverage before applying.",
+      "evidence": "src/users.py"
+    }
+  ]
+}

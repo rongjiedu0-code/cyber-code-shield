@@ -2,22 +2,53 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Cyber-Code-Shield is a review-first audit layer for local AI coding. It helps privacy-sensitive and compliance-heavy teams use local coding models while keeping patch suggestions manual, reviewable, and evidence-backed.
+Cyber-Code-Shield is a review-first audit layer for local AI coding.
 
-It is not a full autonomous coding agent and does not apply patches automatically. Its job is to turn local model output into reviewable patch reports with audit evidence and policy signals.
+Use local coding models while keeping AI-generated patch suggestions manual, reviewable, and evidence-backed. It is not an autonomous coding agent and does not apply patches automatically.
 
-It helps teams keep AI coding useful when cloud AI tools are restricted or not allowed:
+Best for:
 
-- generate audit-friendly Markdown and JSON patch reports
-- record report IDs, model metadata, prompt/response hashes, reviewed file hashes, and warning counts
-- flag non-blocking policy warnings for dependency, network, shell, secret, CI/CD, and sensitive-area changes
-- keep source changes manual and reviewable
-- check local AI environment readiness
-- configure local Ollama + Continue.dev for VS Code
-- analyze existing projects and generate local project context
-- generate local patch, error-fix, and TODO-completion suggestions
+- restricted enterprise and intranet development environments
+- local Ollama / Continue.dev AI coding workflows
+- teams that need policy warnings, reviewed-file hashes, and audit evidence
+- developers who cannot send source code, logs, or business context to cloud AI tools
 
-> Goal: preserve AI coding productivity while giving developers, security reviewers, and compliance teams a local, reviewable evidence trail.
+What it generates:
+
+- Markdown and JSON patch suggestion reports
+- policy warnings for dependency, network, shell, secret, CI/CD, privacy, and supply-chain review
+- report IDs, model metadata, prompt/response hashes, and reviewed file hashes
+- v0.6 report bundles with machine-readable warning files, environment summaries, and manifests
+
+> Cyber-Code-Shield generates local AI coding review evidence, not formal compliance certification.
+
+## Try it
+
+Check local readiness:
+
+```bash
+python setup_local_ai.py --check
+```
+
+Preview a patch suggestion without calling a model:
+
+```bash
+python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --dry-run
+```
+
+Use a stricter enterprise review profile:
+
+```bash
+python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile enterprise-strict --dry-run
+```
+
+Generate a v0.6 evidence bundle:
+
+```bash
+python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile supply-chain --report-bundle --dry-run
+```
+
+See a sanitized example bundle in [`examples/sample-report-bundle`](examples/sample-report-bundle).
 
 ## Who is this for?
 
@@ -32,12 +63,6 @@ Typical scenarios:
 
 ## Quick demo
 
-Check local readiness:
-
-```bash
-python setup_local_ai.py --check
-```
-
 Try the bundled error-fix demo without calling Ollama:
 
 ```bash
@@ -50,15 +75,9 @@ Try the bundled TODO-completion demo without calling Ollama:
 python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
 ```
 
-Generate a reviewable patch suggestion for your own project:
-
-```bash
-python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --dry-run
-```
-
 ## Current status
 
-This project is an early review-first audit and governance toolkit for local AI coding. v0.5 is the first low-risk architecture split: audit/report, policy warning, validation, hashing, serialization, patch parsing, and error-location helpers now live in the `cyber_code_shield` package while the CLI behavior remains stable.
+This project is an early review-first audit and governance toolkit for local AI coding. v0.6 adds built-in policy profiles and report bundles on top of the v0.5 architecture split.
 
 | Capability | Status | Command | Source writes |
 | --- | --- | --- | --- |
@@ -76,10 +95,9 @@ This project is an early review-first audit and governance toolkit for local AI 
 
 Planned next:
 
-- v0.6 policy profiles for basic, enterprise-strict, China privacy, and supply-chain review workflows
-- v0.6 report bundles that package Markdown/JSON reports, warning files, reviewed-file hashes, environment summaries, and a manifest
+- add more precise context selection and snippet trimming
+- add diff-review / CI-friendly review modes
 - finish the remaining architecture split for local inference clients, project context, and the CLI entrypoint
-- more precise context selection and snippet trimming
 - desktop installer work later, after CLI internals are stable
 
 ## Requirements

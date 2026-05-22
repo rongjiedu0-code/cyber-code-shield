@@ -1,0 +1,83 @@
+{
+  "schema_version": "cyber-code-shield.patch-report.v1",
+  "report_id": "ccs-patch-sample-v06000000000000000000000000000000",
+  "generated_at": "2026-05-22T16:00:00",
+  "tool": {
+    "name": "Cyber-Code-Shield",
+    "version": "0.6.0-sample"
+  },
+  "task": {
+    "type": "suggest_patch",
+    "title": "Suggest Patch"
+  },
+  "project": {
+    "path": "/workspace/acme-internal-app"
+  },
+  "model": {
+    "chat_model": "local-code-model:latest",
+    "model_tier": "deep",
+    "inference_provider": "ollama",
+    "api_base": "http://localhost:11434",
+    "context_mode": "lite",
+    "context_lite": true,
+    "timeout_seconds": 600,
+    "max_generated_tokens": 800,
+    "thinking_output_requested": false
+  },
+  "policy": {
+    "profile": "enterprise-strict",
+    "label": "Enterprise Strict",
+    "description": "Stricter review profile for enterprise-controlled code changes.",
+    "rules_version": "cyber-code-shield.policy-profiles.v1",
+    "warnings_enabled": true,
+    "disclaimer": "Policy profiles are review and evidence helpers, not formal compliance certifications."
+  },
+  "audit": {
+    "prompt_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "model_response_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "source_files_modified_automatically": false,
+    "files_reviewed_count": 2,
+    "detected_error_locations_count": 0,
+    "response_warning_count": 1,
+    "policy_warning_count": 2,
+    "policy_scan_status": "enabled",
+    "policy_profile": "enterprise-strict",
+    "reviewed_files": [
+      {
+        "path": "src/users.py",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size_bytes": 1842
+      },
+      {
+        "path": "tests/test_users.py",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "size_bytes": 2310
+      }
+    ]
+  },
+  "user_request": "Add validation before creating a user profile.",
+  "error_locations": [],
+  "policy_warnings_enabled": true,
+  "policy_warnings": [
+    {
+      "code": "ENTERPRISE_REVIEW_REQUIRED",
+      "severity": "review",
+      "message": "Enterprise strict profile selected; route this AI-assisted change through the configured human review process."
+    },
+    {
+      "code": "SENSITIVE_AREA",
+      "severity": "review",
+      "message": "Patch touches user-data validation logic; review behavior and test coverage before applying.",
+      "evidence": "src/users.py"
+    }
+  ],
+  "response_warnings": [
+    "Suggested patch should be reviewed against product-specific username policy."
+  ],
+  "safety_notes": [
+    "This is a patch suggestion, not an applied change.",
+    "Review the diff and validation suggestions before editing source files.",
+    "The output depends on the selected local model and provided context."
+  ],
+  "model_response": "## Confidence\nHigh, because the requested validation is limited to the shown user creation helper and matching test file.\n\n## Missing context\nNone identified.\n\n## Files to change\n- src/users.py\n- tests/test_users.py\n\n## Explanation\nAdd an early validation guard so empty usernames are rejected before profile creation, and add a focused test for the new behavior.\n\n## Suggested patch\n```diff\n--- src/users.py\n+++ src/users.py\n@@ -8,6 +8,8 @@\n def create_user_profile(username):\n+    if not username.strip():\n+        raise ValueError(\"username is required\")\n     return {\"username\": username.strip()}\n--- tests/test_users.py\n+++ tests/test_users.py\n@@ -4,3 +4,7 @@\n def test_create_user_profile_strips_name():\n     assert create_user_profile(\" alice \") == {\"username\": \"alice\"}\n+\n+def test_create_user_profile_rejects_empty_name():\n+    with pytest.raises(ValueError):\n+        create_user_profile(\"   \" )\n```\n\n## Validation steps\n- Run `python -m pytest tests/test_users.py`.\n- Review whether empty usernames should return a validation error or be handled by the caller.\n\n## Risks or assumptions\n- Assumes empty or whitespace-only usernames should be rejected with `ValueError`.\n- This report is a sanitized example and does not contain production source code."
+}

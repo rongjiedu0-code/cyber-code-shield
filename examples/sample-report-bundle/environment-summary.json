@@ -1,0 +1,35 @@
+{
+  "schema_version": "cyber-code-shield.environment-summary.v1",
+  "generated_at": "2026-05-22T16:00:00",
+  "os": "Linux",
+  "platform": "Linux-6.x-sanitized-x86_64-with-glibc2.x",
+  "python_version": "3.11.9",
+  "api_base": "http://localhost:11434",
+  "api_base_is_local": true,
+  "inference_provider": "ollama",
+  "selected_models": {
+    "chat": "local-code-model:latest",
+    "autocomplete": "local-code-model:latest",
+    "embedding": "local-embedding-model:latest"
+  },
+  "continue_findings": {
+    "config_path": "/home/user/.continue/config.yaml",
+    "backup_path": "/home/user/.continue/config.yaml.bak",
+    "config_exists": true,
+    "config_valid_json": true,
+    "providers": [
+      "ollama"
+    ],
+    "cloud_provider_hints": [],
+    "has_local_chat_model": true,
+    "has_local_autocomplete": true,
+    "has_local_embeddings": true,
+    "codebase_index_enabled": true,
+    "codebase_indexing_mode": "Local embeddings configured"
+  },
+  "cloud_api_env_vars_present": [],
+  "notes": [
+    "Only environment signals are recorded; secret values are never read or printed.",
+    "This summary is review evidence, not a formal security audit."
+  ]
+}

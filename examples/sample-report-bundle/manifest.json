@@ -1,0 +1,78 @@
+{
+  "schema_version": "cyber-code-shield.report-bundle.v1",
+  "bundle_id": "ccs-bundle-sample-00000000000000000000000000000000",
+  "report_id": "ccs-patch-sample-v06000000000000000000000000000000",
+  "generated_at": "2026-05-22T16:00:00",
+  "tool": {
+    "name": "Cyber-Code-Shield",
+    "version": "0.6.0-sample"
+  },
+  "policy": {
+    "profile": "enterprise-strict",
+    "label": "Enterprise Strict",
+    "description": "Stricter review profile for enterprise-controlled code changes.",
+    "rules_version": "cyber-code-shield.policy-profiles.v1",
+    "warnings_enabled": true,
+    "disclaimer": "Policy profiles are review and evidence helpers, not formal compliance certifications."
+  },
+  "model": {
+    "chat_model": "local-code-model:latest",
+    "model_tier": "deep",
+    "inference_provider": "ollama",
+    "api_base": "http://localhost:11434",
+    "context_mode": "lite",
+    "context_lite": true,
+    "timeout_seconds": 600,
+    "max_generated_tokens": 800,
+    "thinking_output_requested": false
+  },
+  "project": {
+    "path": "/workspace/acme-internal-app"
+  },
+  "source_files_modified_automatically": false,
+  "reviewed_files": [
+    {
+      "path": "src/users.py",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 1842
+    },
+    {
+      "path": "tests/test_users.py",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size_bytes": 2310
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "report.md",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "content_type": "text/markdown"
+    },
+    {
+      "path": "report.json",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "content_type": "application/json"
+    },
+    {
+      "path": "reviewed-files.json",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "content_type": "application/json"
+    },
+    {
+      "path": "policy-warnings.json",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "content_type": "application/json"
+    },
+    {
+      "path": "validation-warnings.json",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "content_type": "application/json"
+    },
+    {
+      "path": "environment-summary.json",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "content_type": "application/json"
+    }
+  ],
+  "manifest_hash_excludes_self": true
+}

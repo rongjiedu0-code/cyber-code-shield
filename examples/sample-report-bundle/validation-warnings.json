@@ -1,0 +1,9 @@
+{
+  "schema_version": "cyber-code-shield.validation-warnings.v1",
+  "report_id": "ccs-patch-sample-v06000000000000000000000000000000",
+  "generated_at": "2026-05-22T16:00:00",
+  "response_warning_count": 1,
+  "response_warnings": [
+    "Suggested patch should be reviewed against product-specific username policy."
+  ]
+}
