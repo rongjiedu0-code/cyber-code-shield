@@ -24,6 +24,10 @@ What it generates:
 
 ## Try it
 
+For a first look, the bundled dry-run demos need only Python and the standard library. They preview the context sent to a model; they do not call a model, create reports, or modify source files.
+
+Start with the [quick demo](#quick-demo). For a two-minute walkthrough and a focused feedback task, see [the demo and trial guide](docs/FIRST_TRIAL.zh-CN.md).
+
 Check local readiness:
 
 ```bash
@@ -42,11 +46,13 @@ Use a stricter enterprise review profile:
 python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile enterprise-strict --dry-run
 ```
 
-Generate a v0.6 evidence bundle:
+Preview the configuration and prompt for a v0.6 evidence bundle:
 
 ```bash
 python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile supply-chain --report-bundle --dry-run
 ```
+
+Remove `--dry-run` only after configuring a local model to generate a real bundle.
 
 See a sanitized example bundle in [`examples/sample-report-bundle`](examples/sample-report-bundle).
 
@@ -66,7 +72,7 @@ Typical scenarios:
 Try the bundled error-fix demo without calling Ollama:
 
 ```bash
-python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/traceback.txt --context-lite --dry-run
 ```
 
 Try the bundled TODO-completion demo without calling Ollama:
@@ -383,7 +389,7 @@ In local verification, `gemma4-local:latest` produced a good `--fix-error` patch
 Try the bundled demos first:
 
 ```bash
-python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/traceback.txt --context-lite --dry-run
 python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
 ```
 
@@ -620,3 +626,4 @@ This project is designed to be air-gap friendly, but does not claim absolute zer
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+

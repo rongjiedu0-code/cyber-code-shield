@@ -2422,7 +2422,7 @@ def build_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   python setup_local_ai.py --check
-  python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+  python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/traceback.txt --context-lite --dry-run
   python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files src/app.py --dry-run
   python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
   python setup_local_ai.py --suggest-patch --project . --task "Fix bug" --inference-provider openai-compatible --api-base http://localhost:1234/v1 --chat-model local-model
@@ -2602,3 +2602,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
