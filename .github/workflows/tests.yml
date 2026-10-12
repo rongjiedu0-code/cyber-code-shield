@@ -1,0 +1,21 @@
+name: Core tests and first-run demos
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run standard-library tests and documented demos
+        run: python3 -B -m unittest discover -s tests -v

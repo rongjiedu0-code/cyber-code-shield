@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "app.py", line 14, in <module>
+    print(create_user_profile("  Alice_Example  "))
+  File "app.py", line 6, in create_user_profile
+    normalized_username = normalize_username(raw_username)
+  File "app.py", line 2, in normalize_username
+    return username.strip().lower()
+NameError: name 'username' is not defined

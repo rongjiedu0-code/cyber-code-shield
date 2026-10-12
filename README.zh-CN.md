@@ -24,6 +24,10 @@ Cyber-Code-Shield 是面向本地 AI Coding 的审查优先审计层。
 
 ## 快速试用
 
+首次体验只需 Python 和标准库，可先运行下方的[快速演示](#快速演示)。带 `--dry-run` 的命令只预览将发送给模型的上下文，不调用模型、不生成报告，也不修改源码。
+
+[两分钟演示与试用指南](docs/FIRST_TRIAL.zh-CN.md)提供操作顺序、验收标准和反馈问题。
+
 检查本地环境：
 
 ```bash
@@ -42,11 +46,13 @@ python setup_local_ai.py --suggest-patch --project . --task "Add input validatio
 python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile enterprise-strict --dry-run
 ```
 
-生成 v0.6 证据包：
+预览 v0.6 证据包配置与提示词：
 
 ```bash
 python setup_local_ai.py --suggest-patch --project . --task "Add input validation" --files README.md --policy-profile supply-chain --report-bundle --dry-run
 ```
+
+配置本地模型后，去掉 `--dry-run` 才会调用模型并生成真实证据包。
 
 脱敏示例见 [`examples/sample-report-bundle`](examples/sample-report-bundle)。
 
@@ -66,7 +72,7 @@ Cyber-Code-Shield 适合已经体验过 AI 编程效率提升，但所在环境�
 先试内置错误修复 demo，不调用 Ollama：
 
 ```bash
-python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/traceback.txt --context-lite --dry-run
 ```
 
 再试内置 TODO 补全 demo，不调用 Ollama：
@@ -373,7 +379,7 @@ python setup_local_ai.py --suggest-patch --project /path/to/project --task "Fix 
 建议先试内置 demo：
 
 ```bash
-python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/error.log --context-lite --dry-run
+python setup_local_ai.py --fix-error --project examples/demo-buggy-project --error-log examples/demo-buggy-project/traceback.txt --context-lite --dry-run
 python setup_local_ai.py --complete-todo --project examples/demo-todo-project --files app.py --context-lite --dry-run
 ```
 
@@ -607,3 +613,4 @@ Cyber-Code-Shield 是 local-first 工具，默认不配置云端 AI provider。
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
