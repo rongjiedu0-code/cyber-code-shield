@@ -1,6 +1,11 @@
 # Cyber-Code-Shield
 
 English | [简体中文](README.zh-CN.md)
+## ⚡ What's New in V2 (Architected with Gemini 4 Argon)
+
+- **Shared Context Ledger (`AGENTS.md` Auto-Sync)**: Incrementally records architectural `Why` decisions and SHA-256 patch audit verdicts across multi-agent coding sessions (Codex CLI / Cursor / Continue.dev) without overwriting human guardrails.
+- **Local Uncensored Model Red-Team Harness**: Built-in adversarial self-test (`argon_context_shield.py --redteam-self-test`) benchmarked against local edge models (Gemma 4 / Ollama) to intercept hardcoded `sk-proj-*` secrets (`CCS-SEC-002`), remote pipe-to-shell injections (`CCS-SH-001`), and `0.0.0.0` daemon exposures (`CCS-NET-003`).
+- **Cross-Device Review Gate**: Designed for remote patch approval between mobile terminal (Android CLI Codex) and workstation host.
 
 Cyber-Code-Shield is a review-first audit layer for local AI coding.
 
