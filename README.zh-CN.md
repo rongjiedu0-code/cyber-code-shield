@@ -607,3 +607,11 @@ Cyber-Code-Shield 是 local-first 工具，默认不配置云端 AI provider。
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+## V2 接口已就绪：MCP 与只读差异中继
+
+- `cyber_code_shield_mcp_server.py`：标准库实现的 MCP stdio 服务，提供 `shield_audit_patch` 和 `shield_sync_agents_context`。已通过本机消息交互测试；协议版本为 2024-11-05，具体客户端尚未联调。
+- `remote_relay_server.py`：默认监听 `127.0.0.1`，通过 `SHIELD_RELAY_TOKEN`（至少 32 字符）和 Bearer 请求头保护 Git diff。支持暂存区/工作区，只读，不执行审批或应用补丁；跨设备连接应使用私有 VPN 或加密隧道。
+- `argon_context_shield.py` 仍为骨架，独立红队 CLI、完整证据包导出与自动审批仍未实现。
+
+配置、命令与验证步骤见 [英文 README 的 V2 章节](README.md#-v20-interfaces-mcp-server--mobile-diff-relay)。

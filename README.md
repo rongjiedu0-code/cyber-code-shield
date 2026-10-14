@@ -1,9 +1,9 @@
 # Cyber-Code-Shield
 
 English | [简体中文](README.zh-CN.md)
-## ⚡ V2 architecture preview
+## V2 interfaces: ready for local use
 
-V2 targets shared `AGENTS.md` context, patch-policy evidence, MCP integration, and cross-device review. The current [`argon_context_shield.py`](argon_context_shield.py) contains a module outline and a `PolicyWarning` dataclass; the V2 audit CLI, context synchronization, MCP server, and mobile relay are not implemented in this checkout. See the V2 roadmap below.
+The standard-library MCP stdio server and authenticated, read-only diff relay are implemented. MCP provides patch-policy audit results and appends architectural notes to `AGENTS.md`. The relay exposes workstation diffs for manual review; it does not approve or apply patches. See the setup section below.
 
 Cyber-Code-Shield is a review-first audit layer for local AI coding.
 
@@ -624,23 +624,17 @@ This project is designed to be air-gap friendly, but does not claim absolute zer
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-## 🚀 V2.0 Architecture Roadmap: Shared Context, MCP & Mobile Relay
+## 🚀 V2.0 Interfaces: MCP Server & Mobile Diff Relay
 
-V2 is intended to extend local review-first auditing with shared context and cross-device review. The items below describe the proposed architecture, not a released V2 feature set.
-
-### 1. Module status
-
-| Module | Intended role | Current status |
+| Module | Status | Capability |
 | --- | --- | --- |
-| [`argon_context_shield.py`](argon_context_shield.py) | Patch policy checks, SHA-256 evidence export, incremental `AGENTS.md` updates | Outline and `PolicyWarning` dataclass only; no executable audit or sync implementation |
-| `cyber_code_shield_mcp_server.py` | MCP stdio server exposing `shield_audit_patch` and `shield_sync_agents_context` | Planned; file not present |
-| `remote_relay_server.py` | HTTP/Bearer-token gateway for mobile review of workstation diffs | Planned; file not present |
+| [`cyber_code_shield_mcp_server.py`](cyber_code_shield_mcp_server.py) | Ready; offline tests passed | JSON-RPC 2.0 newline-delimited stdio, MCP protocol 2024-11-05, two tools |
+| [`remote_relay_server.py`](remote_relay_server.py) | Ready; local HTTP tests passed | Bearer-authenticated, read-only staged/unstaged Git diff retrieval |
+| [`argon_context_shield.py`](argon_context_shield.py) | Outline only | Standalone audit/export/red-team CLI remains planned |
 
-Planned policy rules include **CCS-SH-001** (shell injection), **CCS-SEC-002** (secret leakage), and **CCS-NET-003** (network exposure). These identifiers describe V2 targets; the outline does not implement their detection or blocking. Existing policy-warning capabilities are documented in the current patch assistant sections above.
+### MCP setup
 
-### 2. Proposed MCP integration
-
-Once the MCP server is implemented, the intended configuration shape is:
+Add this server entry to the client's MCP configuration; replace the absolute path and use `python` on Windows if needed. A compatible client must support the 2024-11-05 MCP protocol. Client-specific end-to-end validation has not been performed.
 
 ```json
 {
@@ -653,9 +647,37 @@ Once the MCP server is implemented, the intended configuration shape is:
 }
 ```
 
-This is a future configuration example and will not run against the current checkout. Use the existing `setup_local_ai.py` commands above for working workflows.
+- `shield_audit_patch`: required `diff_text` string. Returns PASS/WARN/BLOCK, SHA-256 of the input, rule IDs and redacted warning snippets. For unified diffs it checks added lines; for plain text it checks each line.
+- `shield_sync_agents_context`: required nonempty `decision_why`, optional `repo_path` (defaults to the server working directory). Appends a UTC timestamped note without replacing existing content. Set `repo_path` explicitly for the intended repository; the tool writes to that directory with the server process's permissions.
 
-### 3. 中文说明
+Rules cover recognizable pipe-to-shell/destructive commands (**CCS-SH-001**), token patterns (**CCS-SEC-002**), and network/shell exposure patterns (**CCS-NET-003**). This is a regex-based review aid: BLOCK is a returned verdict, not an execution sandbox or automatic enforcement. SHA-256 is an input fingerprint, not a full evidence-bundle export. Arbitrary secrets and command obfuscation may not be detected.
 
-V2 规划包括增量维护 `AGENTS.md`、补丁策略检查与 SHA-256 证据导出、MCP 工具接口，以及移动端到工作站的人工审阅中继。目前仅有 `argon_context_shield.py` 的模块说明和数据结构；审计命令、上下文同步、MCP 服务、移动中继和红队自测尚未实现。上述 MCP JSON 为未来接入示例。现阶段请使用本文已有的 `setup_local_ai.py` 功能。
+### Read-only relay setup
 
+In PowerShell, create a session token, then start the relay:
+
+```powershell
+$env:SHIELD_RELAY_TOKEN = python -c "import secrets; print(secrets.token_urlsafe(32))"
+python remote_relay_server.py --repo "C:/path/to/your/repository" --host 127.0.0.1 --port 8765
+```
+
+The token must have at least 32 characters; there is no built-in default. Defaults bind only to `127.0.0.1`. For a mobile device on a private VPN, bind explicitly to the workstation's private VPN address and supply the token securely to the client. HTTP does not provide TLS; use the private VPN or a trusted encrypted tunnel for remote access.
+
+- `GET /health`: public liveness only.
+- `GET /diff`: unstaged tracked-file changes, requires `Authorization: Bearer <SHIELD_RELAY_TOKEN>`.
+- `GET /diff?staged=1`: staged changes, same header required. Tokens in URLs are not accepted.
+
+Diff responses are complete rather than truncated; untracked file contents are not included. No command execution, approval queue, or patch application is exposed.
+
+### Verification
+
+```bash
+python -m py_compile cyber_code_shield_mcp_server.py remote_relay_server.py
+python -m unittest discover -s tests -p test_v2_interfaces.py -v
+```
+
+Five regression tests cover real stdio exchanges, notifications/errors, policy results and secret redaction, context append, HTTP authentication and full diff retrieval. No tablet or third-party MCP client integration has been verified.
+
+### 中文状态
+
+**已就绪：** MCP stdio 服务、补丁规则审阅与哈希、增量追加 `AGENTS.md`、Bearer 令牌保护的只读 Git diff 中继。已通过语法检查和本机功能测试。**仍为规划：** 自动审批/应用补丁、独立 V2 证据包导出与红队 CLI；`argon_context_shield.py` 仍是骨架。移动设备和具体 MCP 客户端尚未联调。中继需要显式设置令牌，远程连接请使用私有 VPN 地址或加密隧道。
