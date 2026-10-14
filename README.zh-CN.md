@@ -610,7 +610,7 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 ## V2 接口已就绪：MCP 与只读差异中继
 
-- `cyber_code_shield_mcp_server.py`：标准库实现的 MCP stdio 服务，提供 `shield_audit_patch` 和 `shield_sync_agents_context`。已通过本机消息交互测试；协议版本为 2024-11-05，具体客户端尚未联调。
+- `cyber_code_shield_mcp_server.py`：标准库实现的 MCP stdio 服务，提供 `shield_audit_patch` 和 `shield_sync_agents_context`。已通过保持进程运行的 stdio 客户端/服务端端到端联调（initialize、tools/list、tools/call）；协议版本为 2024-11-05，第三方客户端界面尚未验证。
 - `remote_relay_server.py`：默认监听 `127.0.0.1`，通过 `SHIELD_RELAY_TOKEN`（至少 32 字符）和 Bearer 请求头保护 Git diff。支持暂存区/工作区，只读，不执行审批或应用补丁；跨设备连接应使用私有 VPN 或加密隧道。
 - `argon_context_shield.py` 仍为骨架，独立红队 CLI、完整证据包导出与自动审批仍未实现。
 

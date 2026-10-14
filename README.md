@@ -634,7 +634,7 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 ### MCP setup
 
-Add this server entry to the client's MCP configuration; replace the absolute path and use `python` on Windows if needed. A compatible client must support the 2024-11-05 MCP protocol. Client-specific end-to-end validation has not been performed.
+Add this server entry to the client's MCP configuration; replace the absolute path and use `python` on Windows if needed. A compatible client must support the 2024-11-05 MCP protocol. End-to-end stdio client/server integration is verified with a live subprocess client that exchanges initialize, initialized, tools/list, and tools/call messages before closing stdin. Cursor/Claude-specific UI integration has not been performed.
 
 ```json
 {
@@ -676,8 +676,8 @@ python -m py_compile cyber_code_shield_mcp_server.py remote_relay_server.py
 python -m unittest discover -s tests -p test_v2_interfaces.py -v
 ```
 
-Five regression tests cover real stdio exchanges, notifications/errors, policy results and secret redaction, context append, HTTP authentication and full diff retrieval. No tablet or third-party MCP client integration has been verified.
+Six regression tests cover an interactive end-to-end stdio client/server session, notifications/errors, policy results and secret redaction, context append, HTTP authentication and full diff retrieval. No tablet or third-party client UI integration has been verified.
 
 ### 中文状态
 
-**已就绪：** MCP stdio 服务、补丁规则审阅与哈希、增量追加 `AGENTS.md`、Bearer 令牌保护的只读 Git diff 中继。已通过语法检查和本机功能测试。**仍为规划：** 自动审批/应用补丁、独立 V2 证据包导出与红队 CLI；`argon_context_shield.py` 仍是骨架。移动设备和具体 MCP 客户端尚未联调。中继需要显式设置令牌，远程连接请使用私有 VPN 地址或加密隧道。
+**已就绪：** MCP stdio 服务、补丁规则审阅与哈希、增量追加 `AGENTS.md`、Bearer 令牌保护的只读 Git diff 中继。已通过语法检查和本机功能测试。**仍为规划：** 自动审批/应用补丁、独立 V2 证据包导出与红队 CLI；`argon_context_shield.py` 仍是骨架。已通过自动化 stdio 客户端/服务端端到端联调；移动设备和第三方客户端界面尚未联调。中继需要显式设置令牌，远程连接请使用私有 VPN 地址或加密隧道。
