@@ -1,11 +1,9 @@
 # Cyber-Code-Shield
 
 English | [简体中文](README.zh-CN.md)
-## ⚡ What's New in V2 (Architected with Gemini 4 Argon)
+## ⚡ V2 architecture preview
 
-- **Shared Context Ledger (`AGENTS.md` Auto-Sync)**: Incrementally records architectural `Why` decisions and SHA-256 patch audit verdicts across multi-agent coding sessions (Codex CLI / Cursor / Continue.dev) without overwriting human guardrails.
-- **Local Uncensored Model Red-Team Harness**: Built-in adversarial self-test (`argon_context_shield.py --redteam-self-test`) benchmarked against local edge models (Gemma 4 / Ollama) to intercept hardcoded `sk-proj-*` secrets (`CCS-SEC-002`), remote pipe-to-shell injections (`CCS-SH-001`), and `0.0.0.0` daemon exposures (`CCS-NET-003`).
-- **Cross-Device Review Gate**: Designed for remote patch approval between mobile terminal (Android CLI Codex) and workstation host.
+V2 targets shared `AGENTS.md` context, patch-policy evidence, MCP integration, and cross-device review. The current [`argon_context_shield.py`](argon_context_shield.py) contains a module outline and a `PolicyWarning` dataclass; the V2 audit CLI, context synchronization, MCP server, and mobile relay are not implemented in this checkout. See the V2 roadmap below.
 
 Cyber-Code-Shield is a review-first audit layer for local AI coding.
 
@@ -625,3 +623,39 @@ This project is designed to be air-gap friendly, but does not claim absolute zer
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+## 🚀 V2.0 Architecture Roadmap: Shared Context, MCP & Mobile Relay
+
+V2 is intended to extend local review-first auditing with shared context and cross-device review. The items below describe the proposed architecture, not a released V2 feature set.
+
+### 1. Module status
+
+| Module | Intended role | Current status |
+| --- | --- | --- |
+| [`argon_context_shield.py`](argon_context_shield.py) | Patch policy checks, SHA-256 evidence export, incremental `AGENTS.md` updates | Outline and `PolicyWarning` dataclass only; no executable audit or sync implementation |
+| `cyber_code_shield_mcp_server.py` | MCP stdio server exposing `shield_audit_patch` and `shield_sync_agents_context` | Planned; file not present |
+| `remote_relay_server.py` | HTTP/Bearer-token gateway for mobile review of workstation diffs | Planned; file not present |
+
+Planned policy rules include **CCS-SH-001** (shell injection), **CCS-SEC-002** (secret leakage), and **CCS-NET-003** (network exposure). These identifiers describe V2 targets; the outline does not implement their detection or blocking. Existing policy-warning capabilities are documented in the current patch assistant sections above.
+
+### 2. Proposed MCP integration
+
+Once the MCP server is implemented, the intended configuration shape is:
+
+```json
+{
+  "mcpServers": {
+    "cyber-code-shield": {
+      "command": "python3",
+      "args": ["/absolute/path/to/cyber-code-shield/cyber_code_shield_mcp_server.py"]
+    }
+  }
+}
+```
+
+This is a future configuration example and will not run against the current checkout. Use the existing `setup_local_ai.py` commands above for working workflows.
+
+### 3. 中文说明
+
+V2 规划包括增量维护 `AGENTS.md`、补丁策略检查与 SHA-256 证据导出、MCP 工具接口，以及移动端到工作站的人工审阅中继。目前仅有 `argon_context_shield.py` 的模块说明和数据结构；审计命令、上下文同步、MCP 服务、移动中继和红队自测尚未实现。上述 MCP JSON 为未来接入示例。现阶段请使用本文已有的 `setup_local_ai.py` 功能。
+
