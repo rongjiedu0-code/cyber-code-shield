@@ -1,6 +1,20 @@
 # Cyber-Code-Shield
 
 English | [简体中文](README.zh-CN.md)
+
+## Upstream Security Contributions
+
+Security fixes submitted to [CAMEL](https://github.com/camel-ai/camel), with reproducible local regression tests:
+
+| Upstream PR | Security contribution | Targeted local test results | Status |
+| --- | --- | --- | --- |
+| [#4404 — TerminalToolkit safe-mode hardening](https://github.com/camel-ai/camel/pull/4404) | Addresses [issue #4347](https://github.com/camel-ai/camel/issues/4347): validates shell commands before execution, rejects substitution/interpreter and path-qualified executable bypasses, and checks local path containment. | **156 passed · 3 skipped** | Submitted · Open |
+| [#4405 — Agent API authentication & ownership](https://github.com/camel-ai/camel/pull/4405) | Addresses [issue #4348](https://github.com/camel-ai/camel/issues/4348): requires Bearer authentication across seven agent routes and enforces per-identity ownership for listing, history, execution, reset, deletion, and initialization. | **46 passed · 4 deselected** | Submitted · Open |
+
+Validation environment: **Windows / Python 3.11**, using targeted local pytest suites. For #4404, two symlink tests require privileges unavailable on the test host and one interactive test requires bash. For #4405, four model-backend tests were excluded from the offline run. Ruff lint/format checks passed for both submissions. PR links include the reproduction commands and test summaries. Status verified on **2026-10-14**.
+
+The TerminalToolkit contribution strengthens command filtering and path validation; untrusted execution still requires appropriate runtime isolation. The API contribution adds authentication and in-process owner isolation; operators configure the permitted tool registry and securely distribute credentials.
+
 ## V2 interfaces: ready for local use
 
 The standard-library MCP stdio server and authenticated, read-only diff relay are implemented. MCP provides patch-policy audit results and appends architectural notes to `AGENTS.md`. The relay exposes workstation diffs for manual review; it does not approve or apply patches. See the setup section below.

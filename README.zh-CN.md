@@ -2,6 +2,19 @@
 
 [English](README.md) | 简体中文
 
+## Upstream Security Contributions / 上游安全贡献
+
+已向 [CAMEL](https://github.com/camel-ai/camel) 提交以下安全修复，并完成可复现的本机回归验证：
+
+| 上游 PR | 安全修复范围 | 本机专项测试结果 | 状态 |
+| --- | --- | --- | --- |
+| [#4404 — TerminalToolkit 安全模式绕过加固](https://github.com/camel-ai/camel/pull/4404) | 对应 [Issue #4347](https://github.com/camel-ai/camel/issues/4347)：执行前校验 shell 命令，阻断命令替换、解释器与带路径可执行文件等绕过，并检查本地路径是否越界。 | **156 项通过 · 3 项跳过** | 已提交 · Open |
+| [#4405 — Agent API 认证与所有权隔离](https://github.com/camel-ai/camel/pull/4405) | 对应 [Issue #4348](https://github.com/camel-ai/camel/issues/4348)：为全部七个 agent 接口添加 Bearer 认证，并对列表、历史、执行、重置、删除及初始化实施身份与所有权校验。 | **46 项通过 · 4 项未选入运行** | 已提交 · Open |
+
+验证环境为 **Windows / Python 3.11**，以上数字来自本机专项 pytest 回归。#4404 的跳过项包括两个需要符号链接权限的测试和一个依赖 bash 的交互测试；#4405 的四项模型后端测试未纳入离线运行。两个修复均通过 Ruff 代码与格式检查。PR 正文提供复现命令和测试摘要；状态核对日期：**2026-10-14**。
+
+TerminalToolkit 修复强化命令过滤与路径检查，不可信代码执行仍需适当的运行时隔离；API 修复提供身份认证与进程内所有权隔离，工具注册范围和凭据分发由部署者配置。
+
 Cyber-Code-Shield 是面向本地 AI Coding 的审查优先审计层。
 
 它帮助你在使用本地代码模型时，把 AI 生成的补丁建议保持为可人工审查、可留痕、可复核的证据。它不是完整的自主编程 Agent，也不会自动应用补丁。
