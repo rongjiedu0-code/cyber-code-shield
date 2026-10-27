@@ -1,0 +1,19 @@
+{
+  "pricingModel": "PAY_PER_EVENT",
+  "pricingPerEvent": {
+    "actorChargeEvents": {
+      "actor-start": {
+        "eventTitle": "Actor initialization",
+        "eventDescription": "Once, only after the first real result exists; never for offline/fallback-only runs",
+        "eventPriceUsd": 0.02,
+        "isOneTimeEvent": true
+      },
+      "security-audit-file": {
+        "eventTitle": "Security Audit File",
+        "eventDescription": "One unique extracted or audited item",
+        "eventPriceUsd": 0.01,
+        "isPrimaryEvent": true
+      }
+    }
+  }
+}

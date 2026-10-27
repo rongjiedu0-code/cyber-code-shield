@@ -1,0 +1,14 @@
+{
+  "actorSpecification": 1,
+  "name": "ai-code-security-shield-ppe",
+  "title": "AI Code Security Shield: Diff, Command & Secret Audit",
+  "description": "AI Code Security Shield: Diff, Command & Secret Audit. Explicit Pay-Per-Event billing with budget-aware output and offline examples.",
+  "version": "1.2",
+  "input": "./input_schema.json",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "dockerContextDir": ".."
+}

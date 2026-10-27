@@ -1,0 +1,89 @@
+{
+  "title": "ai-code-security-shield-ppe input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "files": {
+      "title": "Inline files or code segments",
+      "type": "array",
+      "editor": "json",
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Default code is really parsed and scanned during this run. Built-in examples are identified as such, not claimed to be vulnerabilities in a live repository.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "File label",
+            "type": "string",
+            "editor": "textfield",
+            "description": "Display label, never a local path to open.",
+            "default": "snippet.py",
+            "prefill": "snippet.py"
+          },
+          "content": {
+            "title": "Code or diff text",
+            "type": "string",
+            "editor": "textarea",
+            "description": "Inline code to audit without execution.",
+            "default": "print(\"hello\")",
+            "prefill": "print(\"hello\")"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "default": [
+        {
+          "name": "builtin_shell_review.py",
+          "content": "import subprocess\ndef run_tool(user_command):\n    return subprocess.run(user_command, shell=True, capture_output=True)"
+        },
+        {
+          "name": "builtin_path_review.py",
+          "content": "from pathlib import Path\ndef read_user_path(base, relative_path):\n    return (Path(base) / relative_path).read_text()"
+        },
+        {
+          "name": "builtin_route_review.py",
+          "content": "app = FastAPI()\n@app.delete('/agents/{agent_id}')\nasync def delete_agent(agent_id):\n    return agents.pop(agent_id)"
+        }
+      ],
+      "prefill": [
+        {
+          "name": "builtin_shell_review.py",
+          "content": "import subprocess\ndef run_tool(user_command):\n    return subprocess.run(user_command, shell=True, capture_output=True)"
+        },
+        {
+          "name": "builtin_path_review.py",
+          "content": "from pathlib import Path\ndef read_user_path(base, relative_path):\n    return (Path(base) / relative_path).read_text()"
+        },
+        {
+          "name": "builtin_route_review.py",
+          "content": "app = FastAPI()\n@app.delete('/agents/{agent_id}')\nasync def delete_agent(agent_id):\n    return agents.pop(agent_id)"
+        }
+      ]
+    },
+    "maxItems": {
+      "title": "Maximum unique content scans",
+      "type": "integer",
+      "editor": "number",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 3,
+      "description": "Maximum unique content scans.",
+      "prefill": 3
+    },
+    "mode": {
+      "title": "Run mode",
+      "type": "string",
+      "editor": "select",
+      "enum": [
+        "audit",
+        "offline"
+      ],
+      "description": "Default performs real collection/analysis. Only server environment OFFLINE_MODE=1 explicitly enables free demo fallback; legacy demo/offline input values do not disable live mode.",
+      "default": "audit",
+      "prefill": "audit"
+    }
+  }
+}

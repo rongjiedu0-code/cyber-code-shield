@@ -1,0 +1,3 @@
+Derived from local Apache-2.0 pain-point-radar and cyber-code-shield by rongjiedu0-code.
+Original source files are preserved in src/vendor; relative import adapted for standalone packaging.
+Campaign additions: Apify SDK wrappers, billing receipts, adapters, regression tests, product transforms.

@@ -1,0 +1,72 @@
+name: Test and deploy Apify Actors
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apify-actors/**'
+      - '.actor/**'
+      - '.github/workflows/deploy-apify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apify-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        actor: [ai-code-security-shield-ppe]
+    defaults:
+      run:
+        working-directory: apify-actors/${{ matrix.actor }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: apify-actors/${{ matrix.actor }}/requirements*.txt
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run billing, live-policy, AST and parser regressions
+        env:
+          OFFLINE_MODE: '0'
+          PYTHONUTF8: '1'
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        actor: [ai-code-security-shield-ppe]
+    env:
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+      APIFY_CLI_DISABLE_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+      - name: Validate Actor and Dataset schemas
+        run: npx --yes apify-cli@latest validate-schema
+        working-directory: apify-actors/${{ matrix.actor }}
+      - name: Deploy and wait for the actual cloud build
+        if: ${{ env.APIFY_TOKEN != '' }}
+        run: npx --yes apify-cli@latest push
+        working-directory: apify-actors/${{ matrix.actor }}
+      - name: Report missing deployment credential without claiming deployment
+        if: ${{ env.APIFY_TOKEN == '' }}
+        run: |
+          echo '::notice::APIFY_TOKEN is not configured. Tests/schema validation ran; cloud deployment was skipped.'
+          echo 'Set the APIFY_TOKEN repository Actions secret and rerun this workflow to enable deployment.' >> "$GITHUB_STEP_SUMMARY"
