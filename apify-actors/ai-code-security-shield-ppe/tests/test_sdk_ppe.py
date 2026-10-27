@@ -39,7 +39,7 @@ class RealSDKTests(unittest.TestCase):
                                 capture_output=True, text=True, encoding='utf-8', timeout=90)
         result.elapsed_seconds = time.perf_counter() - started
         jsons = [json.loads(p.read_text(encoding='utf-8')) for p in storage.rglob('*.json')]
-        charges = [x for x in jsons if isinstance(x, dict) and 'event_name' in x]
+        charges = sorted([x for x in jsons if isinstance(x, dict) and 'event_name' in x], key=lambda row: row['timestamp'])
         items = [x for x in jsons if isinstance(x, dict) and 'id' in x and x['id'].startswith(('pp_', 'audit_', 'trend_'))]
         return result, charges, items
 
