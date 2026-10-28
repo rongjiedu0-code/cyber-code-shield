@@ -1,0 +1,3 @@
+﻿本软件复用本地四维线索评分、URL 清洗、静态审计规则，并新增中文应用与对账逻辑。
+Python 3.11 使用 PSF 许可；openpyxl 与 et_xmlfile 使用 MIT 许可；许可文件随绿色环境及 _deps 附带。
+联系：rongjiedu1@gmail.com

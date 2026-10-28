@@ -1,0 +1,94 @@
+{
+  "DRJ88A01": {
+    "web": "VIP-B3D9-D082-0572",
+    "sha": "VIP-A37B-9CBE-3502"
+  },
+  "12345678": {
+    "web": "VIP-4C95-5DEA-2CBA",
+    "sha": "VIP-4CE9-5B4E-8ED0"
+  },
+  "ABCDEFGH": {
+    "web": "VIP-A055-CC6A-EA3A",
+    "sha": "VIP-55B7-CC45-7565"
+  },
+  "00000000": {
+    "web": "VIP-1F2D-F382-8B52",
+    "sha": "VIP-06BE-CA64-33B2"
+  },
+  "00000001": {
+    "web": "VIP-2E28-D8CF-969F",
+    "sha": "VIP-CA3D-6E8D-8014"
+  },
+  "00000002": {
+    "web": "VIP-5C1F-2458-68A8",
+    "sha": "VIP-8694-96D7-441F"
+  },
+  "00000003": {
+    "web": "VIP-50D2-DADD-59AD",
+    "sha": "VIP-6379-95BE-C556"
+  },
+  "00000004": {
+    "web": "VIP-07B9-BA6E-3B3E",
+    "sha": "VIP-AEC4-1817-578D"
+  },
+  "00000005": {
+    "web": "VIP-6A64-969B-546B",
+    "sha": "VIP-6AC0-BB4D-F0DC"
+  },
+  "00000006": {
+    "web": "VIP-19EB-E714-A4E4",
+    "sha": "VIP-CB13-A92C-F552"
+  },
+  "00000007": {
+    "web": "VIP-00BE-8469-4239",
+    "sha": "VIP-1CBF-C519-68B6"
+  },
+  "00000008": {
+    "web": "VIP-EF85-1AFA-06CA",
+    "sha": "VIP-74EA-9C9F-70AF"
+  },
+  "00000009": {
+    "web": "VIP-D920-0F67-01B7",
+    "sha": "VIP-0A15-58BC-00D9"
+  },
+  "0000000A": {
+    "web": "VIP-C938-607F-A0AF",
+    "sha": "VIP-5D20-EBD1-643B"
+  },
+  "0000000B": {
+    "web": "VIP-662F-6908-03B8",
+    "sha": "VIP-155A-A042-E752"
+  },
+  "0000000C": {
+    "web": "VIP-EBE2-1F8D-BA3D",
+    "sha": "VIP-55A1-C618-ADBC"
+  },
+  "0000000D": {
+    "web": "VIP-6C49-FF1E-0ACE",
+    "sha": "VIP-2767-2371-D9C0"
+  },
+  "0000000E": {
+    "web": "VIP-0BF4-3E4B-7E7B",
+    "sha": "VIP-924C-4CFF-0A6A"
+  },
+  "0000000F": {
+    "web": "VIP-43FB-8644-4674",
+    "sha": "VIP-C8AD-9437-011C"
+  },
+  "00000010": {
+    "web": "VIP-E2C2-6CED-AFBD",
+    "sha": "VIP-DA6C-0ED5-498A"
+  },
+  "00000011": {
+    "web": "VIP-8B0F-3EE8-F938",
+    "sha": "VIP-8C93-D1DA-305A"
+  },
+  "00000012": {
+    "web": "VIP-D698-6CDF-962F",
+    "sha": "VIP-39E2-4F35-66F5"
+  },
+  "00000013": {
+    "web": "VIP-8D1D-6192-1BE2",
+    "sha": "VIP-5CEF-90A9-BA25"
+  }
+}
