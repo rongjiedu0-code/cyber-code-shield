@@ -224,6 +224,13 @@ def test_real_product_profit_and_price_band(rate):
     assert rows[0]['同表品类价格带']=='100.00–120.00' and rows[0]['同表品类中位价']=='110.00'
 
 
+@pytest.mark.parametrize('sale,rate,expected_fee',[('19.50','3%','0.59'),('1.00','0.5%','0.01')])
+def test_half_cent_fees_round_consistently(sale,rate,expected_fee):
+    row=analyze_products([{'商品名称':'边界核对','销售价':sale,'采购成本':'0','手续费率':rate}])[0]
+    assert row['手续费']==expected_fee
+    assert Decimal(row['估算毛利'])==Decimal(sale)-Decimal(expected_fee)
+
+
 @pytest.mark.parametrize('bad',[-1,'NaN','Infinity','2','-1%'])
 def test_invalid_fee_rates(bad):
     with pytest.raises((ValueError,ArithmeticError)):analyze_products([{'商品名称':'a','销售价':'1','采购成本':'1','手续费率':bad}])

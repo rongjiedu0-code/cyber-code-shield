@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from statistics import median
 from urllib.parse import urlencode
 from .common import integer, money
@@ -85,10 +85,13 @@ def analyze_products(records):
         cost = money(cost_raw, '采购成本', False)
         freight = money(row.get('运费', '0') or '0', '运费', False)
         raw_rate = str(row.get('手续费率', '0') or '0').strip()
-        rate = Decimal(raw_rate.rstrip('%')) / (100 if raw_rate.endswith('%') else 1)
+        try:
+            rate = Decimal(raw_rate.rstrip('%')) / (100 if raw_rate.endswith('%') else 1)
+        except InvalidOperation as error:
+            raise ValueError('手续费率请填数字比例或带 % 的百分数') from error
         if not rate.is_finite() or not 0 <= rate <= 1:
             raise ValueError('手续费率请填 0–1 的比例或带 % 的百分数')
-        fee = (sale*rate).quantize(Decimal('.01'))
+        fee = (sale*rate).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
         profit = sale-cost-freight-fee
         category = str(row.get('品类') or '未分类')
         url = row.get('商品链接') or row.get('链接') or ''
@@ -96,7 +99,7 @@ def analyze_products(records):
             url = clean_url(url)
         staged.append({'商品名称': name, '品类': category, '销售价': str(sale), '采购成本': str(cost),
             '运费': str(freight), '手续费': str(fee), '估算毛利': str(profit),
-            '估算毛利率': str((profit/sale*100).quantize(Decimal('.01'))) + '%' if sale else '不适用',
+            '估算毛利率': str((profit/sale*100).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)) + '%' if sale else '不适用',
             '异常': '是' if profit < 0 else '否', '商品链接': url,
             '说明': '基于导入报价估算；未包含广告、退货、税费和人工，不是利润承诺'})
         groups[category].append(sale)
